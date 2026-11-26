@@ -29,3 +29,26 @@ export function weldVertices(m:MeshData,tolerance:number):MeshData{
 export function meshToObj(m:MeshData):string{
  const mesh=readMesh(m);return ['# Game Studio mesh (right-handed OBJ)','o GameStudioMesh',...mesh.vertices.map(v=>'v '+[v[0],v[1],-v[2]].join(' ')),...mesh.triangles.map(t=>'f '+[t[0]+1,t[1]+1,t[2]+1].join(' '))].join('\n')+'\n';
 }
+
+/** Geometry-only OBJ import. Triangles and convex polygon fans, no external resources. */
+export function meshFromObj(raw:string):MeshData{
+ if(raw.length>2_000_000)throw Error('OBJ exceeds 2 MB');
+ const vertices:Vec3[]=[],triangles:Face[]=[];
+ for(const line of raw.split(/\r?\n/)){
+ const fields=line.split('#',1)[0].trim().split(/\s+/);const tag=fields.shift();
+ if(!tag)continue;
+ if(tag==='v'){
+ if(fields.length!==3||fields.some(s=>!s||!Number.isFinite(Number(s))))throw Error('Expected three finite OBJ coordinates');
+ const [x,y,z]=fields.map(Number);if(Math.max(Math.abs(x),Math.abs(y),Math.abs(z))>1000||vertices.length>=2048)throw Error('OBJ vertex limit exceeded');
+ vertices.push([x,y,-z]);
+ }else if(tag==='f'){
+ if(fields.length<3||fields.length>64)throw Error('Invalid OBJ face');
+ const face=fields.map(field=>{const index=field.split('/')[0];if(!/^-?\d+$/.test(index))throw Error('Invalid OBJ index');const n=Number(index),i=n>0?n-1:vertices.length+n;if(!n||i<0||i>=vertices.length)throw Error('OBJ face references an unknown vertex');return i;});
+ if(new Set(face).size!==face.length)throw Error('Repeated OBJ vertex index');
+ for(let i=1;i<face.length-1;i++){if(triangles.length>=4096)throw Error('OBJ triangle limit exceeded');triangles.push([face[0],face[i],face[i+1]]);}
+ }else if(['vn','vt','o','g','s','usemtl','mtllib'].includes(tag)){
+ // Ignore metadata and references. No resource loading, normals or UV import.
+ }else throw Error('Unsupported OBJ statement: '+tag);
+ }
+ return readMesh({vertices,triangles});
+}
