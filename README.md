@@ -16,7 +16,9 @@ npm run test:e2e
 ```
 
 ## Current experimental capabilities
-Scene editing, primitive and GLB model assets, prefab snapshots, parameterized characters, static character physics, PBR materials, direct transform tools, no-code gameplay events, IndexedDB autosave, decorative transform animation, basic editable mesh topology, standalone HTML export and reviewable declarative AI edit plans.
+Multi-level 3D authoring and standalone campaign HTML export; searchable scene hierarchy, transform handles, GLB and OBJ assets, linked prefabs, articulated characters, transform animation, procedural terrain, PBR materials and generated textures, UV projection, editable mesh topology and local sculpt brushes, portable mesh GLB export, static and translational dynamic physics, moving gameplay triggers, no-code events and counters, sound effects, touch controls, IndexedDB project storage, and reviewable multi-level AI plans. Local development gateways support BYOK and GitHub project commits; they are not public multi-tenant services.
+
+The regular CI suite uses Chromium. The separate browser compatibility workflow is configured for Chromium, Firefox and WebKit; availability of manual dispatch requires the workflow on the default branch. Cross-browser results are not yet established.
 
 See [development](docs/development.md) for workflows, limitations and verification. See [architecture](docs/architecture.md) for planned platform modules.
 
