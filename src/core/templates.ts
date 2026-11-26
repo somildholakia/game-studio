@@ -1,3 +1,4 @@
+import {compileTerrain,defaultTerrain} from './terrain';
 import {entity,type Entity,type Project,type Vec3} from './project';
 function placed(kind:Entity['kind'],role:NonNullable<Entity['role']>,name:string,position:Vec3,color:string,scale:Vec3=[1,1,1]):Entity {return {...entity(kind),role,name,position,color,scale};}
 export function treasureTemplate():Project {
@@ -25,5 +26,17 @@ export function platformTemplate():Project{
  placed('sphere','collectible','Sky gem',[0,2.3,7.4],'#ffce54',[.45,.45,.45]),
  placed('box','solid','Landing',[0,2.15,9.7],'#7d90bc',[2,.5,1.5]),
  placed('box','goal','Finish',[0,2.9,9.7],'#53dc88',[.5,.5,.5])
+ ]};
+}
+
+export function terrainTemplate():Project{
+ const terrain:Entity={...entity('terrain'),name:'Rolling meadow',scale:[2,1,2],terrain:{...defaultTerrain,amplitude:.45,frequency:1.25}};
+ const surface=compileTerrain(terrain);
+ const at=(x:number,z:number,h:number):Vec3=>[x,(surface.height(x,z)??0)+h,z];
+ return {version:1,name:'Meadow Explorer',entities:[terrain,
+ placed('character','player','Explorer',at(0,-7,.85),'#6ac3ff'),
+ placed('sphere','collectible','Gem A',at(-3,-2,.55),'#ffd052',[.5,.5,.5]),
+ placed('sphere','collectible','Gem B',at(3,2,.55),'#ffd052',[.5,.5,.5]),
+ placed('box','goal','Exit',at(0,7,.65),'#5be68a',[.8,.7,.8])
  ]};
 }
