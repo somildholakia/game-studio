@@ -12,5 +12,5 @@ export function patrolPosition(origin:Vec3,patrol:Patrol,time:number):Vec3{
  return origin.map((n,i)=>n+patrol.offset[i]*f) as Vec3;
 }
 export type MovingTrigger={id:string;bounds:Bounds;patrol?:Patrol};
-export function triggerSpec(e:Entity):MovingTrigger{return {id:e.id,bounds:bounds(e),patrol:e.patrol};}
+export function triggerSpec(e:Entity):MovingTrigger{return {id:e.id,bounds:bounds(e),patrol:e.role==='hazard'||e.role==='collectible'?e.patrol:undefined};}
 export function triggerBounds(spec:MovingTrigger,time:number):Bounds{return spec.patrol?{...spec.bounds,center:patrolPosition(spec.bounds.center,spec.patrol,time)}:spec.bounds;}
