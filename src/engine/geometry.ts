@@ -1,8 +1,9 @@
-import {Mesh,MeshBuilder,type Scene} from '@babylonjs/core';
+import {Mesh,MeshBuilder,VertexData,type Scene} from '@babylonjs/core';
 import type {Entity} from '../core/project';
 export function createPrimitive(e:Entity,scene:Scene):Mesh {
  const id=e.id;
  switch(e.kind){
+ case 'mesh':{const data=e.mesh;if(!data)throw Error('Missing mesh geometry');const mesh=new Mesh(id,scene);const vertexData=new VertexData();vertexData.positions=data.vertices.flat();vertexData.indices=data.triangles.flat();const normals:number[]=[];VertexData.ComputeNormals(vertexData.positions,vertexData.indices,normals);vertexData.normals=normals;vertexData.applyToMesh(mesh);mesh.convertToFlatShadedMesh();return mesh;}
  case 'ground':return MeshBuilder.CreateGround(id,{width:12,height:12},scene);
  case 'sphere':return MeshBuilder.CreateSphere(id,{diameter:1.5},scene);
  case 'cylinder':return MeshBuilder.CreateCylinder(id,{height:1.5,diameter:1.5,tessellation:32},scene);
