@@ -2,11 +2,11 @@ import {describe,it,expect} from 'vitest';
 import {validateGlb,validateAssets,type ModelAsset} from './assets';
 import {entity,initialProject,parseProject,replaceEntity} from './project';
 import {addModel,removeModel,savePrefab,instantiatePrefab,countInstances,updatePrefab,removePrefab,detachPrefab} from './prefabs';
-function glb(document:object):Uint8Array<ArrayBuffer>{
+function glb(document:object,binLength=0):Uint8Array<ArrayBuffer>{
  const json=new TextEncoder().encode(JSON.stringify(document));const n=Math.ceil(json.length/4)*4;
- const bytes=new Uint8Array(20+n);const view=new DataView(bytes.buffer);
+ const bytes=new Uint8Array(20+n+(binLength?8+binLength:0));const view=new DataView(bytes.buffer);
  view.setUint32(0,0x46546c67,true);view.setUint32(4,2,true);view.setUint32(8,bytes.length,true);view.setUint32(12,n,true);view.setUint32(16,0x4e4f534a,true);
- bytes.fill(32,20);bytes.set(json,20);return bytes;
+ bytes.fill(32,20,20+n);bytes.set(json,20);if(binLength){view.setUint32(20+n,binLength,true);view.setUint32(24+n,0x004e4942,true);}return bytes;
 }
 const minimal={asset:{version:'2.0'},meshes:[{primitives:[]}]};
 function model():ModelAsset {return {id:'sha256:'+'a'.repeat(64),name:'fixture.glb',format:'glb',data:btoa(String.fromCharCode(...glb(minimal)))};}
@@ -29,4 +29,30 @@ it('updates linked appearance across levels without modifying placement or gamep
  expect(parseProject(JSON.stringify(next)).entities[0].prefabId).toBe(f.id);
  expect(detachPrefab(next.entities[0]).prefabId).toBeUndefined();const removed=removePrefab(next,f.id);expect(countInstances(removed,f.id)).toBe(0);expect(removed.entities).toHaveLength(2);
  expect(()=>parseProject(JSON.stringify({...next,prefabs:[]}))).toThrow();
+});
+
+describe('GLB decoded resource budgets',()=>{
+ const accessor={count:3,type:'VEC3',componentType:5126,bufferView:0};
+ const embedded={...minimal,buffers:[{byteLength:36}],bufferViews:[{buffer:0,byteLength:36}],accessors:[accessor]};
+ it('accepts bounded binary geometry and rejects a missing or oversized buffer',()=>{
+  expect(()=>validateGlb(glb(embedded,36))).not.toThrow();
+  expect(()=>validateGlb(glb(embedded))).toThrow();
+  expect(()=>validateGlb(glb({...embedded,buffers:[{byteLength:40}]},36))).toThrow();
+  expect(()=>validateGlb(glb({...embedded,bufferViews:[{buffer:0,byteOffset:4,byteLength:36}]},36))).toThrow();
+ });
+ it('rejects accessor ranges outside the view and invalid references',()=>{
+  for(const a of [{...accessor,count:4},{...accessor,bufferView:1},{...accessor,byteOffset:4},{...accessor,type:'toString'},{...accessor,componentType:123}]){
+   expect(()=>validateGlb(glb({...embedded,accessors:[a]},36))).toThrow();
+  }
+ });
+ it('validates strided and sparse accessors',()=>{
+  expect(()=>validateGlb(glb({...embedded,bufferViews:[{buffer:0,byteLength:36,byteStride:16}]},36))).toThrow();
+  expect(()=>validateGlb(glb({...embedded,accessors:[{count:3,type:'VEC3',componentType:5126,sparse:{count:1,indices:{bufferView:1,componentType:5121},values:{bufferView:0}}}]},36))).toThrow();
+ });
+ it('rejects huge and cumulative implicit zero-filled accessor allocations',()=>{
+  const zero={type:'VEC4',componentType:5126,count:250000};
+  expect(()=>validateGlb(glb({...minimal,accessors:[{...zero,count:250001}]}))).toThrow();
+  expect(()=>validateGlb(glb({...minimal,accessors:Array.from({length:5},()=>zero)}))).toThrow();
+  expect(()=>validateGlb(glb({...minimal,accessors:[zero]}))).not.toThrow();
+ });
 });
