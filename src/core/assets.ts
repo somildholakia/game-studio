@@ -27,11 +27,24 @@ function validateBinaryDeclarations(json:any,binLength:number):void{
   if(typeof type!=='string'||!Object.hasOwn(components,type)||!uint(component)||!Object.hasOwn(sizes,component)||!uint(count)||count===0||count>MAX_ACCESSOR_ELEMENTS)fail();
   // Conservatively budget padded matrices and float conversion by the renderer.
   const decoded=count*components[type]*4;total+=decoded;if(total>MAX_DECODED_ACCESSOR_BYTES)fail();
-  if(accessor.bufferView!==undefined&&(!uint(accessor.bufferView)||accessor.bufferView>=views.length))fail();
-  if(accessor.byteOffset!==undefined&&!uint(accessor.byteOffset))fail();
+  const componentBytes=sizes[component];
+  const dimension=type.startsWith('MAT')?Number(type.slice(3)):0;
+  const width=dimension?Math.ceil(dimension*componentBytes/4)*4*dimension:components[type]*componentBytes;
+  const range=(index:unknown,offset:unknown,items:number,itemWidth:number,alignment:number,interleaved:boolean)=>{
+   if(!uint(index)||index>=views.length||!uint(offset)||offset%alignment!==0)fail();
+   const view=views[index],stride=interleaved?(view.byteStride??itemWidth):itemWidth;
+   if((!interleaved&&view.byteStride!==undefined)||stride<itemWidth||stride%alignment!==0||
+      ((view.byteOffset??0)+offset)%alignment!==0||offset>view.byteLength||
+      (items-1)*stride+itemWidth>view.byteLength-offset)fail();
+  };
+  if(accessor.bufferView!==undefined)range(accessor.bufferView,accessor.byteOffset??0,count,width,componentBytes,true);
+  else if(accessor.byteOffset!==undefined&&accessor.byteOffset!==0)fail();
   if(accessor.sparse!==undefined){
    const sparse=accessor.sparse;
-   if(!sparse||!uint(sparse.count)||sparse.count===0||sparse.count>count)fail();
+   if(!sparse||!uint(sparse.count)||sparse.count===0||sparse.count>count||!sparse.indices||!sparse.values||![5121,5123,5125].includes(sparse.indices.componentType))fail();
+   const indexBytes=sizes[sparse.indices.componentType];
+   range(sparse.indices.bufferView,sparse.indices.byteOffset??0,sparse.count,indexBytes,indexBytes,false);
+   range(sparse.values.bufferView,sparse.values.byteOffset??0,sparse.count,width,componentBytes,false);
   }
  }
 }
