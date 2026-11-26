@@ -1,4 +1,4 @@
-import type {Entity,Project,Vec3} from '../core/project';
+import type {Project,Vec3} from '../core/project';
 import {bounds,moveAxis,overlaps,type Bounds} from './collision';
 export type BodySettings={mass:number;restitution:number;friction:number;velocity:Vec3};
 export const defaultBody:BodySettings={mass:1,restitution:.2,friction:4,velocity:[0,0,0]};
@@ -37,11 +37,12 @@ export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,soli
  let target=moved.position,hit=moved.hit;
  if(axis===1&&delta<0){
  let surface=-Infinity;
- for(const floor of floors)if(overlaps(b.position,half,floor,[0,2]))surface=Math.max(surface,floor.center[1]+floor.half[1]);
- for(const t of terrains){const h=t.height(b.position[0],b.position[2]);if(h!==null)surface=Math.max(surface,h);}
+ for(const floor of floors)if(overlaps(b.position,half,floor,[0,2])&&floor.center[1]+floor.half[1]+half[1]<=b.position[1]+.0001)surface=Math.max(surface,floor.center[1]+floor.half[1]);
+ for(const t of terrains){const h=t.height(b.position[0],b.position[2]);if(h!==null&&h+half[1]<=b.position[1]+.0001)surface=Math.max(surface,h);}
  const top=surface+half[1];if(Number.isFinite(top)&&target<top&&b.position[1]>=top-.0001){target=top;hit=true;}
  grounded=hit;
  }
+ if(axis!==1){const candidate=[...b.position] as Vec3;candidate[axis]=target;for(const t of terrains){const h=t.height(candidate[0],candidate[2]);if(h!==null&&candidate[1]-half[1]<h-.001){target=b.position[axis];hit=true;break;}}}
  b.position[axis]=target;
  if(hit){b.velocity[axis]=-b.velocity[axis]*settings.restitution;if(Math.abs(b.velocity[axis])<.15)b.velocity[axis]=0;}
  }
