@@ -52,7 +52,7 @@ function Editor({boot}:{boot:Boot}){
  useEffect(()=>{setPreview(null);},[selected]);
  useEffect(()=>{view.current?.setTool(selected,tool,snap);},[selected,tool,snap,playing]);
  useEffect(()=>{if(!saveEnabled){setStorage('Autosave disabled — export a backup');return;}let live=true;setStorage('Saving locally…');void persist(p).then(()=>{if(live)setStorage('Saved on this device');}).catch(()=>{if(live)setStorage('Local save failed — export a backup');});return()=>{live=false;};},[p,saveEnabled]);
- const change=(next:Project)=>{if(!playingRef.current)setH(old=>commit(old,next));};const active=p.entities.find(e=>e.id===selected);
+ const change=(next:Project)=>{if(playingRef.current)return;if(next.entities.length+(next.levels??[]).reduce((sum,l)=>sum+l.entities.length,0)>20000){setError('Game exceeds the 20,000 entity limit.');return;}setH(old=>commit(old,next));};const active=p.entities.find(e=>e.id===selected);
  const add=(kind:Entity['kind'])=>{if(p.entities.length>=10000){setError('Scene entity limit reached');return;}const e=entity(kind);change({...p,entities:[...p.entities,e]});setSelected(e.id);};
  const edit=(e:Entity)=>{if(e.kind==='terrain'&&!validTerrainTransform(e)){setError('Terrain rotation is locked; scale must be positive.');return;}change(replaceEntity(p,e));};
  const save=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(p,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='world.game-studio.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
