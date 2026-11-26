@@ -276,3 +276,29 @@ test('review and apply AI lighting, audio and game presentation settings as one 
  await expect(page.getByLabel('Enable fog')).not.toBeChecked();await expect(page.getByLabel('Enable game sounds')).not.toBeChecked();
  await expect(page.getByLabel('HUD title')).toHaveValue('');
 });
+
+test('configure an object-specific collectible event and persist its source',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run',exact:true}).click();
+ await page.getByRole('button',{name:'+ Add event rule',exact:true}).click();
+ const rule=page.getByRole('group',{name:'Rule 1',exact:true});
+ const source=rule.getByLabel('Event object',{exact:true});
+ const target=source.locator('option').filter({hasText:'Gem A'});
+ const id=await target.getAttribute('value');expect(id).toBeTruthy();
+ await source.selectOption(id!);await expect(source).toHaveValue(id!);
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();
+ await expect(source).toHaveValue(id!);
+ await rule.getByLabel('When').selectOption('start');await expect(source).toHaveCount(0);
+ await rule.getByLabel('When').selectOption('collect');await expect(source).toHaveValue('');
+});
+test('persist animation interpolation and ping-pong loop options',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ await page.getByRole('button',{name:'Create animation at 0s',exact:true}).click();
+ await page.getByLabel('Interpolation',{exact:true}).selectOption('smooth');
+ await page.getByLabel('Ping-pong loop',{exact:true}).check();
+ await page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true}).fill('3');
+ await page.getByRole('button',{name:'Capture pose',exact:true}).click();
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();
+ await page.getByRole('button',{name:'mesh',exact:true}).click();
+ await expect(page.getByLabel('Interpolation',{exact:true})).toHaveValue('smooth');
+ await expect(page.getByLabel('Ping-pong loop',{exact:true})).toBeChecked();
+});
