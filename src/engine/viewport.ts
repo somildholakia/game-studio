@@ -5,7 +5,7 @@ import {createPrimitive} from './geometry';
 import {loadModel} from './modelLoader';
 import type {Project} from '../core/project';
 import {begin,advance,compileWorld,type GameState} from '../runtime/simulation';
-export type PlayStatus={collected:number;total:number;won:boolean};
+export type PlayStatus={collected:number;total:number;won:boolean;score:number;message:string};
 export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void) {
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
@@ -41,7 +41,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);
  camera.setTarget(new Vector3(...run.state.position));
  for(const item of run.world.pickups)meshes.get(item.id)?.mesh.setEnabled(!run.state.collected.has(item.id));
- const status={collected:run.state.collected.size,total:run.total,won:run.state.won};
+ const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message};
  const signature=JSON.stringify(status);if(signature!==run.last){run.last=signature;run.notify(status);}
  }
  scene.render();};
