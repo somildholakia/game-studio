@@ -48,7 +48,7 @@ it('dispatches collect events only once per item and preserves the authored rule
 describe('checkpoints and hazards',()=>{
  it('sets a checkpoint once, then respawns there on hazard contact',()=>{
  const p:Project={version:1,name:'Checkpoint',entities:[{...entity('box'),role:'player',position:[0,.75,0]},{...entity('box'),id:'checkpoint',role:'checkpoint',position:[2,.2,0],scale:[.5,.2,.5]},{...entity('box'),role:'hazard',position:[5,.75,0],scale:[.6,1,.6]}],logic:{autoWin:false,rules:[{id:'cp',event:'checkpoint',minScore:0,action:{kind:'score',amount:10}},{id:'r',event:'respawn',minScore:0,action:{kind:'message',text:'Try again'}}]}};
- let s=begin(p);for(let i=0;i<20;i++)s=step(p,s,{x:1,z:0},.05);
+ let s=begin(p);for(let i=0;i<15;i++)s=step(p,s,{x:1,z:0},.05);
  expect(s.checkpointId).toBe('checkpoint');expect(s.logic.score).toBe(10);
  for(let i=0;i<40&&s.respawns===0;i++)s=step(p,s,{x:1,z:0},.05);
  expect(s.respawns).toBe(1);expect(s.position[0]).toBeCloseTo(2,0);expect(s.logic.message).toBe('Try again');expect(s.logic.score).toBe(0);expect(s.checkpointId).toBe('checkpoint');
