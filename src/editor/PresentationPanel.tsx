@@ -6,6 +6,6 @@ export function PresentationPanel({value,onChange,disabled}:{value?:Presentation
  <label>Camera distance<input type="range" min="4" max="40" step=".5" value={p.distance} onChange={e=>onChange({...p,distance:e.target.valueAsNumber})}/>{p.distance}</label>
  <label>HUD title<input maxLength={100} value={p.hudTitle} onChange={e=>onChange({...p,hudTitle:e.target.value})}/></label>
  <label>HUD text color<input type="color" value={p.hudColor} onChange={e=>onChange({...p,hudColor:e.target.value})}/></label>
- {(['showScore','showCollectibles','showMessages'] as const).map(k=><label key={k}><input type="checkbox" checked={p[k]} onChange={e=>onChange({...p,[k]:e.target.checked})}/>{({showScore:'Show score',showCollectibles:'Show collectibles',showMessages:'Show messages'})[k]}</label>)}
+ {(['showScore','showCollectibles','showMessages','showCounters'] as const).map(k=><label key={k}><input type="checkbox" checked={p[k]??false} onChange={e=>onChange({...p,[k]:e.target.checked})}/>{({showScore:'Show score',showCollectibles:'Show collectibles',showMessages:'Show messages',showCounters:'Show named counters'})[k]}</label>)}
  <button onClick={()=>onChange({...defaultPresentation})}>Reset game UI</button></fieldset>;
 }
