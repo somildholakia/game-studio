@@ -3,7 +3,7 @@ export function RulePanel({value,onChange,disabled}:{value?:Logic;onChange:(logi
  const logic=value??defaultLogic;const edit=(id:string,patch:Partial<Rule>)=>onChange({...logic,rules:logic.rules.map(r=>r.id===id?{...r,...patch}:r)});
  const action=(kind:Action['kind']):Action=>kind==='score'?{kind,amount:10}:kind==='message'?{kind,text:'Nice work!'}:{kind:'win'};
  return <fieldset disabled={disabled}><legend>Gameplay Studio · Events</legend><label><input type="checkbox" checked={logic.autoWin} onChange={e=>onChange({...logic,autoWin:e.target.checked})}/> Win at goal after collecting everything</label>
- <p className="hint">Rules run top to bottom when an event occurs. Score resets on respawn. No code required.</p>
+ <p className="hint">Rules run top to bottom when an event occurs. Jump fires on a grounded jump; second fires once per simulated second. Score resets on respawn. No code required.</p>
  {logic.rules.map((r,i)=><fieldset key={r.id}><legend>Rule {i+1}</legend><label>When<select value={r.event} onChange={e=>edit(r.id,{event:e.target.value as EventKind})}>{events.map(e=><option key={e}>{e}</option>)}</select></label>
  <label>If score is at least<input type="number" value={r.minScore} onChange={e=>{const n=e.target.valueAsNumber;if(Number.isInteger(n)&&Math.abs(n)<=1e6)edit(r.id,{minScore:n});}}/></label>
  <label>Do<select value={r.action.kind} onChange={e=>edit(r.id,{action:action(e.target.value as Action['kind'])})}><option value="score">Change score</option><option value="message">Show message</option><option value="win">Win game</option></select></label>
