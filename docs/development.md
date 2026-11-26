@@ -3,7 +3,11 @@
 Node.js 22+. Run npm install, npm run dev, npm test and npm run build. Dev and build generate an embedded IIFE player bundle. The development server binds to loopback; the built static editor does not expose credentialed integrations.
 
 ## Playable games
-Load Treasure Run, Sky Steps or Meadow Explorer. Press Play; move using WASD, arrows or on-screen controls, jump with Space or Jump. Collect items and reach the goal. Stop restores the authored scene. Assign roles (decoration, player, solid, collectible, goal) to supported primitives and characters. One player per scene. Undo/redo, project JSON export and self-contained HTML game export are supported. No native executable builds or multiplayer yet.
+Load Treasure Run, Sky Steps, Meadow Explorer or the two-level Adventure Campaign. Press Play; move using WASD, arrows or on-screen controls, jump with Space or Jump. Collect items and reach the goal. Stop restores the authored scene. Assign roles (decoration, player, solid, collectible, goal) to supported primitives and characters. One player per scene. Hazard objects respawn the player; checkpoints change the current respawn location and dispatch a checkpoint event. Score and collectibles reset on respawn. Keep checkpoints and their respawn locations clear of hazards and solid geometry. Undo/redo, project JSON export and self-contained HTML game export are supported. No native executable builds or multiplayer yet.
+
+## Level Manager and game presentation
+Create, rename, reorder and delete up to 32 levels; editing switches the active scene while assets and prefabs remain shared. Each level has its own entities, physics, logic, audio and environment. The active scene is autosaved along with all inactive levels. Undo restores previous edits including level deletion. Play tests the current level; Play campaign starts at the first level, and Next level appears after completion. HTML export includes the full ordered campaign. Every campaign level needs a player and a goal with auto-win enabled or a win rule. This validates structure, not solvability. Score and progress reset between levels; no save-game system or branching scene graph yet.
+Game UI and camera controls customize HUD title, text color, score, collectibles, messages and follow/overhead camera distance. Workspace and inspector filters and scene search organize editing controls. Rendering quality is global: resolution scaling, optional directional shadows and 512/1024/2048 shadow maps. Diagnostics report approximate FPS, scene mesh/vertex counts and render-buffer dimensions. These are local observations, not a production performance benchmark.
 
 ## Project management and assets
 The active workspace autosaves to IndexedDB. Legacy localStorage data migrates without deleting its old backup. The named project library stores independent snapshots; Save project copy, Open, Update or Delete explicitly. These are snapshots, not multiple automatically saved live workspaces. Browser storage can be evicted, and concurrent tabs can overwrite the active workspace; export backups.
@@ -14,7 +18,7 @@ Static swept axis-aligned collisions, gravity, jumping, raised platforms, respaw
 
 ## Terrain and environment
 Create a terrain object and edit its seed, grid resolution, amplitude and frequency. It uses deterministic triangle heights for rendering and center-point ground contact; terrain is axis aligned with positive scale and cannot be assigned another gameplay role or animated. Large cliffs, overlapping heightfields and extreme scales have limitations; this is not general mesh collision. Meadow Explorer is a terrain example.
-Environment Studio sets sky/background color, ambient and directional light, sun direction, intensity and color, and exponential fog. Day, sunset and night presets are static settings, not an animated weather system. No HDR environment map, shadow pipeline or volumetric lighting yet.
+Environment Studio sets sky/background color, ambient and directional light, sun direction, intensity and color, and exponential fog. Day, sunset and night presets are static settings, not an animated weather system. Optional directional shadow maps are available; no HDR environment map or volumetric lighting yet.
 
 ## Modeling, characters and animation
 Model Studio supports editable cube topology, numeric vertex editing, vertex duplicate/delete, triangle add/delete, subdivision, validation and flat shading. Limits: 2,048 vertices and 4,096 triangles per mesh. Custom models are decorative. No sculpting, UV editor, interactive vertex picking or Boolean tools.
@@ -22,7 +26,7 @@ Characters are procedural articulated low-poly figures with adjustable proportio
 Transform keyframes support decorative objects, linear interpolation, looping and scrubbing. Ground, terrain and gameplay roles are excluded to preserve static collision. PBR primitive materials support color, roughness, metallic and emission.
 
 ## Gameplay and audio
-Ordered event rules support start, collect, goal entry and respawn, minimum score conditions and score, message or win actions. No arbitrary scripts. Default win behavior can be disabled.
+Ordered event rules support start, collect, goal entry, respawn and checkpoint, minimum score conditions and score, message or win actions. No arbitrary scripts. Default win behavior can be disabled.
 Audio Studio generates bounded synthesized oscillator sound effects for start, collect, jump, respawn and win; adjust waveform, duration, pitch and volume. Browser autoplay restrictions require interaction. No audio file imports, spatial mixing or music timeline.
 
 ## Local AI and GitHub integrations
@@ -31,4 +35,4 @@ GitHub project integration accepts a user-supplied least-privilege repository to
 The gateways are loopback and same-origin only, intended for local development. Do not deploy them publicly without authentication, rate limits, tenant isolation, secret management, abuse protection and security review. Live credentials and external provider calls have not been verified in CI.
 
 ## Verification
-Run npm test, npm run build, npx playwright install chromium, npm run test:e2e. CI includes software WebGL Chromium tests for authoring, persistence, play, export, gameplay, mesh/animation, AI plan approval, terrain and character controls. Local gateway tests use mocked upstream responses. See release-gates.md for the production checklist. No full engine parity or million-user claim.
+Run npm test, npm run build, npx playwright install chromium, npm run test:e2e. CI includes software WebGL Chromium tests for authoring, persistence, play, export, gameplay, mesh/animation, AI plan approval, terrain, character controls, campaign transitions, workspace filters, HUD and graphics settings. Local gateway tests use mocked upstream responses. See release-gates.md for the production checklist. No full engine parity or million-user claim.
