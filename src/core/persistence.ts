@@ -32,3 +32,32 @@ let pending:Promise<void>=Promise.resolve();
 export function persist(project:Project):Promise<void>{
  const result=pending.catch(()=>{}).then(()=>write(project));pending=result;return result;
 }
+
+export type SavedProject={id:string;name:string;updatedAt:number};
+const PREFIX='library:';
+function libraryKey(id:string){if(!/^[a-f0-9-]{36}$/.test(id))throw Error('Invalid library ID');return PREFIX+id;}
+type Entry=SavedProject&{project:Project};
+async function transaction<T>(mode:IDBTransactionMode,operation:(store:IDBObjectStore)=>IDBRequest<T>):Promise<T>{
+ const db=await open();try{return await new Promise<T>((resolve,reject)=>{
+ const tx=db.transaction(STORE,mode);const req=operation(tx.objectStore(STORE));
+ tx.oncomplete=()=>resolve(req.result);tx.onerror=()=>reject(tx.error??Error('Library transaction failed'));tx.onabort=()=>reject(tx.error??Error('Library transaction aborted'));
+ });}finally{db.close();}
+}
+export async function listProjects():Promise<SavedProject[]>{
+ const db=await open();try{return await new Promise((resolve,reject)=>{
+ const tx=db.transaction(STORE,'readonly');const cursor=tx.objectStore(STORE).openCursor(IDBKeyRange.bound(PREFIX,PREFIX+'\uffff'));
+ const entries:SavedProject[]=[];cursor.onsuccess=()=>{const c=cursor.result;if(!c)return;const e=c.value as Entry;if(e&&typeof e.id==='string'&&typeof e.name==='string'&&typeof e.updatedAt==='number')entries.push({id:e.id,name:e.name,updatedAt:e.updatedAt});c.continue();};
+ tx.oncomplete=()=>resolve(entries.sort((a,b)=>b.updatedAt-a.updatedAt));tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+export async function saveProjectCopy(project:Project,name:string,id=crypto.randomUUID()):Promise<SavedProject>{
+ const title=name.trim();if(!title||title.length>200)throw Error('Enter a project name up to 200 characters.');
+ const validated=parseProject(JSON.stringify({...project,name:title}));
+ const entry:Entry={id,name:title,updatedAt:Date.now(),project:validated};
+ await transaction('readwrite',store=>store.put(entry,libraryKey(id)));return {id,name:title,updatedAt:entry.updatedAt};
+}
+export async function openProjectCopy(id:string):Promise<Project>{
+ const entry=await transaction('readonly',store=>store.get(libraryKey(id))) as Entry|undefined;
+ if(!entry)throw Error('Saved project not found');return parseProject(JSON.stringify(entry.project));
+}
+export async function deleteProjectCopy(id:string):Promise<void>{await transaction('readwrite',store=>store.delete(libraryKey(id)));}
