@@ -30,6 +30,6 @@ Verified historical baselines:
 - Complete advanced modeling / linked prefab baseline: 45805425149.
 - Complete dynamics, patrol and diagnostics baseline: 45806635083.
 
-The cross-browser workflow is configured but not yet executed and certified. Manual dispatch depends on default-branch availability.
+The cross-browser workflow is configured for relevant pull request changes and manual dispatch (the latter depends on default-branch availability). Configuration does not certify browser compatibility. The texture accessibility fix passed Validate run 45829261366; this is a historical baseline only.
 
 Historical baselines do not certify the current branch head. Latest CI results must be checked separately. No live third-party credentials are used in tests.
