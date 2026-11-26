@@ -13,3 +13,27 @@ describe('runtime',()=>{
  it('requires a player',()=>expect(()=>begin({...world(),entities:[]})).toThrow());
  it('normalizes diagonal movement',()=>{const p=world();const s=step(p,begin(p),{x:1,z:1},.05);expect(Math.hypot(s.position[0],s.position[2])).toBeCloseTo(.2);});
 });
+
+describe('vertical physics',()=>{
+ it('lands on the ground and jumps only once per held input',()=>{
+ const p=world();let state=begin(p);
+ for(let i=0;i<60;i++)state=step(p,state,{x:0,z:0},1/60);
+ expect(state.grounded).toBe(true);expect(state.position[1]).toBeCloseTo(.75);
+ state=step(p,state,{x:0,z:0,jump:true},1/60);expect(state.velocityY).toBeGreaterThan(0);
+ for(let i=0;i<120;i++)state=step(p,state,{x:0,z:0,jump:true},1/60);
+ expect(state.grounded).toBe(true);expect(state.position[1]).toBeCloseTo(.75);
+ });
+ it('lands on a raised platform',()=>{
+ const p=world();p.entities[0].position=[0,5,0];p.entities.push({...entity('box'),role:'solid',position:[0,1,0]});
+ let state=begin(p);for(let i=0;i<120;i++)state=step(p,state,{x:0,z:0},1/60);
+ expect(state.position[1]).toBeCloseTo(2.5);expect(state.grounded).toBe(true);
+ });
+ it('does not collect items far above the player',()=>{
+ const p=world();p.entities[1].position=[0,20,0];const state=step(p,begin(p),{x:0,z:0},.05);expect(state.collected.size).toBe(0);
+ });
+ it('respawns when falling outside a finite ground',()=>{
+ const p=world();p.entities[0].position=[0,.75,0];p.entities.push({...entity('ground'),scale:[.1,1,.1]});
+ let state=begin(p);for(let i=0;i<400&&state.respawns===0;i++)state=step(p,state,{x:-1,z:0},1/60);
+ expect(state.respawns).toBe(1);expect(state.collected.size).toBe(0);
+ });
+});
