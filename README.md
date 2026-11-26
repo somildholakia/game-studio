@@ -7,7 +7,7 @@ Browser-native 3D game authoring with a modular editor, local project persistenc
 Node.js 22+.
 
 ```sh
-npm install
+npm ci
 npm run dev
 npm test
 npm run build

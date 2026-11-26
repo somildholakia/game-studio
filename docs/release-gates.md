@@ -32,4 +32,6 @@ Verified historical baselines:
 
 The cross-browser workflow is configured for relevant pull request changes and manual dispatch (the latter depends on default-branch availability). Configuration does not certify browser compatibility. The texture accessibility fix passed Validate run 45829261366; this is a historical baseline only.
 
+A dependency lockfile was generated in successful Validate run 45829995781; CI now uses npm ci, with clean-install verification of the committed lock pending.
+
 Historical baselines do not certify the current branch head. Latest CI results must be checked separately. No live third-party credentials are used in tests.

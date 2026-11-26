@@ -1,6 +1,6 @@
 # Development and creator workflows
 
-Node.js 22+. Run npm install, npm run dev, npm test and npm run build. Dev and build generate an embedded IIFE player bundle. The development server binds to loopback; the built static editor does not expose credentialed integrations.
+Node.js 22+. Run npm ci, npm run dev, npm test and npm run build. Dev and build generate an embedded IIFE player bundle. The development server binds to loopback; the built static editor does not expose credentialed integrations.
 
 ## Playable games
 Load Treasure Run, Sky Steps, Meadow Explorer, Physics Playground or the two-level Adventure Campaign. Press Play; move using WASD, arrows or on-screen controls, jump with Space or Jump. Collect items and reach the goal. Stop restores the authored scene. Assign roles (decoration, player, solid, collectible, goal) to supported primitives and characters. One player per scene. Hazard objects respawn the player; checkpoints change the current respawn location and dispatch a checkpoint event. Score and collectibles reset on respawn. Keep checkpoints and their respawn locations clear of hazards and solid geometry. Undo/redo, project JSON export and self-contained HTML game export are supported. No native executable builds or multiplayer yet.
