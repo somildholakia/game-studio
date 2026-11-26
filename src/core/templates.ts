@@ -49,3 +49,16 @@ export function adventureCampaign():Project{
  second.logic={autoWin:true,rules:[{id:crypto.randomUUID(),event:'checkpoint',minScore:0,action:{kind:'message',text:'Checkpoint reached'}},{id:crypto.randomUUID(),event:'respawn',minScore:0,action:{kind:'message',text:'Try again'}}]};
  const id=crypto.randomUUID();return {...first,name:'Adventure Campaign',sceneId:'main',sceneName:'Treasure Run',sceneOrder:['main',id],levels:[{id,name:'Meadow Explorer',entities:second.entities,environment:second.environment,logic:second.logic}]};
 }
+
+export function physicsTemplate():Project{
+ return {version:1,name:'Physics Playground',environment:{...environmentPresets.Day},entities:[
+ placed('ground','decoration','Playground',[0,0,0],'#486759',[1.5,1,1.5]),
+ placed('character','player','Explorer',[0,.8,-5],'#67b9fa'),
+ {...placed('box','dynamic','Pushable crate',[0,.75,-2],'#a9754e'),body:{mass:.6,restitution:.1,friction:2,velocity:[0,0,0]}},
+ {...placed('sphere','dynamic','Bouncing ball',[-3,4,1],'#6ac3ff',[.65,.65,.65]),body:{mass:1,restitution:.65,friction:1,velocity:[1,0,0]}},
+ {...placed('box','hazard','Moving obstacle',[-4,.5,2],'#e25757',[.7,.65,.7]),patrol:{offset:[8,0,0],period:5}},
+ {...placed('sphere','collectible','Moving gem',[-3,.7,5],'#ffce54',[.5,.5,.5]),patrol:{offset:[6,0,0],period:6}},
+ placed('box','goal','Exit',[0,.6,8],'#53dc88',[.8,.5,.8]),
+ placed('box','solid','Wall',[4,.75,-1],'#8397af',[.5,1,3])
+ ]};
+}
