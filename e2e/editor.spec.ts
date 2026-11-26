@@ -239,3 +239,19 @@ test('a stale editor tab cannot silently overwrite the active saved workspace',a
   await expect(other.getByRole('button',{name:'sphere',exact:true})).toHaveCount(0);
  }finally{await other.close();}
 });
+
+test('publish a self-contained HTML game with an escaped project title',async({page},testInfo)=>{
+ const name='Game </title><script>window.injected=true</script> & adventure';
+ const player={id:'player',name:'Player',kind:'box',position:[0,1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'player'};
+ const fixture={version:1,name,entities:[player],logic:{autoWin:false,rules:[{id:'win',event:'start',minScore:0,action:{kind:'win'}}]}};
+ await page.goto('/');await page.locator('header input[type=file]').setInputFiles({name:'project.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
+ await expect(page.locator('header')).toContainText(name);
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();
+ const file=await download;const path=testInfo.outputPath('published.html');await file.saveAs(path);
+ await page.goto(pathToFileURL(path).href);
+ await expect(page).toHaveTitle(name);
+ await expect(page.locator('#hud')).toContainText('Level complete!',{timeout:30000});
+ await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute('content',/connect-src data: blob:/);
+ expect(await page.evaluate(()=>Reflect.get(window,'injected'))).toBeUndefined();
+ expect(await page.locator('script').count()).toBe(2);
+});
