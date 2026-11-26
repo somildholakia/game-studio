@@ -1,4 +1,15 @@
 export type Control='up'|'down'|'left'|'right'|'jump';
+export type PadInput={x:number;z:number;jump:boolean};
+/** Read the first connected standard gamepad. Ignore noisy stick motion near rest. */
+export function gamepadInput(pads:readonly (Pick<Gamepad,'connected'|'mapping'|'axes'|'buttons'>|null)[]):PadInput{
+ const pad=pads.find(p=>p?.connected&&p.mapping==='standard');
+ if(!pad)return {x:0,z:0,jump:false};
+ const pressed=(index:number)=>pad.buttons[index]?.pressed===true;
+ const axis=(index:number)=>{const value=pad.axes[index];return Number.isFinite(value)&&Math.abs(value)>.2?Math.max(-1,Math.min(1,value)):0;};
+ const x=Number(pressed(15))-Number(pressed(14));
+ const z=Number(pressed(12))-Number(pressed(13));
+ return {x:x||axis(0),z:z||-axis(1)||0,jump:pressed(0)};
+}
 export function bindTouchControls(root:HTMLElement,onChange:(control:Control,active:boolean)=>void){
  const pointers=new Map<number,Control>();const valid=['up','down','left','right','jump'];
  function release(id:number){const c=pointers.get(id);if(!c)return;pointers.delete(id);if(![...pointers.values()].includes(c))onChange(c,false);}

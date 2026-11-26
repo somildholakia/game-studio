@@ -9,7 +9,7 @@ import {createMaterial,updateMaterial} from './material';
 import {createPrimitive} from './geometry';
 import {loadModel} from './modelLoader';
 import {createAudio,defaultAudio} from '../runtime/audio';
-import type {Control} from '../runtime/controls';
+import {gamepadInput,type Control} from '../runtime/controls';
 import {triggerBounds} from '../runtime/patrol';
 import {sample} from '../core/animation';
 import type {Project} from '../core/project';
@@ -53,7 +53,10 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
  const render=()=>{
  if(run){
- const input={x:Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft')),z:Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown')),jump:touch.has('jump')||keys.has(' ')};
+ const pad=gamepadInput(navigator.getGamepads?.()??[]);
+ const horizontal=Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft'));
+ const vertical=Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown'));
+ const input={x:horizontal||pad.x,z:vertical||pad.z,jump:touch.has('jump')||keys.has(' ')||pad.jump};
  const dt=engine.getDeltaTime()/1000;if(!run.state.won)run.elapsed+=Math.min(.1,Math.max(0,dt));const before=run.state;run.state=advance(run.world,run.state,input,dt);const sound=run.project.audio??defaultAudio;
  if(run.state.respawns>before.respawns)audio.play(sound,'respawn');else if(run.state.collected.size>before.collected.size)audio.play(sound,'collect');if(before.grounded&&run.state.velocityY>0)audio.play(sound,'jump');if(!before.won&&run.state.won)audio.play(sound,'win');applyAnimation(run.project,run.elapsed);
  const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.elapsed,moving,run.state.grounded);}}
