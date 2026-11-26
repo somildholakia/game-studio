@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {validateGlb,validateAssets,type ModelAsset} from './assets';
 import {entity,initialProject,parseProject,replaceEntity} from './project';
-import {addModel,removeModel,savePrefab,instantiatePrefab} from './prefabs';
+import {addModel,removeModel,savePrefab,instantiatePrefab,countInstances,updatePrefab,removePrefab,detachPrefab} from './prefabs';
 function glb(document:object):Uint8Array<ArrayBuffer>{
  const json=new TextEncoder().encode(JSON.stringify(document));const n=Math.ceil(json.length/4)*4;
  const bytes=new Uint8Array(20+n);const view=new DataView(bytes.buffer);
@@ -19,4 +19,14 @@ describe('asset policy',()=>{
 describe('reusable prefabs and characters',()=>{
  it('creates independent snapshots and unique instances',()=>{const e=entity('character');const p=savePrefab(initialProject(),e);const f=p.prefabs![0];const a=instantiatePrefab(f),b=instantiatePrefab(f);expect(a.id).not.toBe(b.id);a.character!.headSize=1.2;expect(b.character!.headSize).toBe(1);expect(f.source.character!.headSize).toBe(1);});
  it('preserves character settings and rejects invalid proportions',()=>{let p=initialProject();const e=entity('character');p.entities.push(e);p=replaceEntity(p,{...e,character:{bodyWidth:1.2,headSize:.8,limbLength:1.1}});expect(parseProject(JSON.stringify(p)).entities.at(-1)?.character?.bodyWidth).toBe(1.2);p.entities.at(-1)!.character!.headSize=99;expect(()=>parseProject(JSON.stringify(p))).toThrow();});
+});
+
+it('updates linked appearance across levels without modifying placement or gameplay',()=>{
+ let p=savePrefab(initialProject(),entity('box'));const f=p.prefabs![0];const a=instantiatePrefab(f,true),b=instantiatePrefab(f,true),c=instantiatePrefab(f);
+ a.role='solid';a.position=[5,2,1];b.position=[7,2,1];p={...p,entities:[a,c],levels:[{id:'second',name:'Second',entities:[b]}]};
+ expect(countInstances(p,f.id)).toBe(2);const next=updatePrefab(p,f.id,{...a,color:'#ff0000'});
+ expect(next.entities[0].color).toBe('#ff0000');expect(next.entities[0].position).toEqual([5,2,1]);expect(next.entities[0].role).toBe('solid');expect(next.entities[1].color).toBe(c.color);expect(next.levels![0].entities[0].color).toBe('#ff0000');expect(p.entities[0].color).not.toBe('#ff0000');
+ expect(parseProject(JSON.stringify(next)).entities[0].prefabId).toBe(f.id);
+ expect(detachPrefab(next.entities[0]).prefabId).toBeUndefined();const removed=removePrefab(next,f.id);expect(countInstances(removed,f.id)).toBe(0);expect(removed.entities).toHaveLength(2);
+ expect(()=>parseProject(JSON.stringify({...next,prefabs:[]}))).toThrow();
 });
