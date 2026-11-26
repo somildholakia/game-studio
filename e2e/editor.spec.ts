@@ -52,3 +52,27 @@ test('preview, approve and undo a declarative AI edit',async({page})=>{
  await page.getByRole('button',{name:'Undo',exact:true}).click();
  await expect(wall).toHaveCount(0);
 });
+
+test('generate terrain and edit environment settings',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Meadow Explorer'}).click();
+ await page.getByRole('button',{name:'Rolling meadow',exact:true}).click();
+ const terrain=page.getByRole('group',{name:'Terrain Studio · Procedural heightfield',exact:true});
+ await expect(terrain.getByLabel('Grid resolution')).toHaveValue('32');
+ await terrain.getByLabel('Height amplitude').fill('0.8');
+ await expect(terrain.getByLabel('Height amplitude')).toHaveValue('0.8');
+ const environment=page.getByRole('group',{name:'Environment Studio',exact:true});
+ await environment.getByRole('button',{name:'Sunset',exact:true}).click();
+ await expect(environment.getByLabel('Enable fog')).toBeChecked();
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ await expect(page.locator('.game-hud')).toContainText('Collectibles 0 / 2');
+});
+test('customize character appearance and preserve the rig on reload',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ character',exact:true}).click();
+ const rig=page.getByRole('group',{name:'Character Studio · Appearance and joints',exact:true});
+ await rig.getByLabel('Hair style').selectOption('cap');
+ await rig.getByLabel('Automatic walk and jump poses').uncheck();
+ await expect(page.locator('footer')).toContainText('Saved on this device');
+ await page.reload();await page.getByRole('button',{name:'character',exact:true}).click();
+ await expect(rig.getByLabel('Hair style')).toHaveValue('cap');
+ await expect(rig.getByLabel('Automatic walk and jump poses')).not.toBeChecked();
+});
