@@ -206,3 +206,19 @@ test('preview and undo a multi-level AI plan',async({page})=>{
  await expect(page.getByRole('button',{name:'Forest exit goal',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Forest exit goal',exact:true})).toHaveCount(0);
 });
+
+test('subdivide entire mesh, undo and redo shared topology',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const stats=page.getByTestId('mesh-topology-stats');
+ await expect(stats).toContainText('8 vertices · 12 triangles');
+ await page.getByRole('button',{name:'Subdivide entire mesh',exact:true}).click();
+ await expect(stats).toContainText('26 vertices · 48 triangles');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(stats).toContainText('8 vertices · 12 triangles');
+ await page.getByRole('button',{name:'Redo',exact:true}).click();
+ await expect(stats).toContainText('26 vertices · 48 triangles');
+ await expect(page.locator('footer')).toContainText('Saved on this device');
+ await page.reload();await page.getByRole('button',{name:'mesh',exact:true}).click();
+ await expect(stats).toContainText('26 vertices · 48 triangles');expect(errors).toEqual([]);
+});
