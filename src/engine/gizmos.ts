@@ -22,9 +22,9 @@ export function createGizmos(scene:Scene,onCommit:(id:string,transform:Transform
  function configure(target:Mesh|null,tool:Tool,snap:boolean){
  if(target!==mesh){dragMesh=null;mesh=target;}
  manager.positionGizmoEnabled=tool==='move';manager.rotationGizmoEnabled=tool==='rotate';manager.scaleGizmoEnabled=tool==='scale';
- if(g.positionGizmo)g.positionGizmo.snapDistance=snap?.25:0;
+ if(g.positionGizmo)g.positionGizmo.snapDistance=snap ? .25 : 0;
  if(g.rotationGizmo)g.rotationGizmo.snapDistance=snap?Math.PI/12:0;
- if(g.scaleGizmo)g.scaleGizmo.snapDistance=snap?.1:0;
+ if(g.scaleGizmo)g.scaleGizmo.snapDistance=snap ? .1 : 0;
  manager.attachToMesh(tool==='select'?null:target);
  }
  configure(null,'select',false);
