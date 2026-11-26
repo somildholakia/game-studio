@@ -1,4 +1,4 @@
-import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,type AssetContainer} from '@babylonjs/core';
+import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,MeshBuilder,StandardMaterial,Color3,type AssetContainer} from '@babylonjs/core';
 import {createShadows} from './shadows';
 import {defaultGraphics,type GraphicsSettings,type RenderMetrics} from '../core/graphics';
 import {defaultPresentation} from '../core/presentation';
@@ -14,13 +14,16 @@ import {sample} from '../core/animation';
 import type {Project} from '../core/project';
 import {begin,advance,compileWorld,type GameState} from '../runtime/simulation';
 export type PlayStatus={collected:number;total:number;won:boolean;score:number;message:string};
-export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void,onMetrics?:(m:RenderMetrics)=>void) {
+export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void,onMetrics?:(m:RenderMetrics)=>void,onVertexPick?:(index:number)=>void) {
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
  const environment=createEnvironment(scene);const shadows=createShadows(environment.sun);let graphics:GraphicsSettings=defaultGraphics;let lastMetrics=0;
  const refreshShadows=()=>shadows.sync(graphics,Array.from(meshes.values(),entry=>entry.mesh));
- const gizmos=onTransform?createGizmos(scene,onTransform):null;let selected='';let tool:Tool='move';let snap=false;let previewing=false;
- function refreshGizmo(){gizmos?.configure(run||previewing?null:meshes.get(selected)?.mesh??null,run||previewing?'select':tool,snap);}
+ const gizmos=onTransform?createGizmos(scene,onTransform):null;let selected='';let tool:Tool='move';let snap=false;let previewing=false;let vertexMode=false;let vertexIndex=0;let authored:Project|null=null;
+ const marker=onVertexPick?MeshBuilder.CreateSphere('editor-vertex-marker',{diameter:.12,segments:8},scene):null;
+ if(marker){const material=new StandardMaterial('editor-vertex-marker-material',scene);material.emissiveColor=new Color3(1,.65,.08);material.disableLighting=true;marker.material=material;marker.isPickable=false;marker.setEnabled(false);}
+ function vertexPoint(index:number){const data=authored?.entities.find(e=>e.id===selected)?.mesh;const mesh=meshes.get(selected)?.mesh;if(!data||!mesh||!data.vertices[index])return null;return Vector3.TransformCoordinates(new Vector3(...data.vertices[index]),mesh.computeWorldMatrix(true));}
+ function refreshGizmo(){gizmos?.configure(run||previewing||vertexMode?null:meshes.get(selected)?.mesh??null,run||previewing||vertexMode?'select':tool,snap);}
  type Entry={mesh:Mesh;signature:string;assetData?:string;container?:AssetContainer};
  const meshes=new Map<string,Entry>();let disposed=false;
  function destroy(entry:Entry){entry.container?.removeAllFromScene();entry.container?.dispose();entry.mesh.dispose(false,true);}
@@ -31,8 +34,9 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
  const clear=()=>{keys.clear();touch.clear();};
  window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);canvas.addEventListener('pointerdown',unlock);
- scene.onPointerDown=(_,pick)=>{if(run||previewing)return;let node=pick?.pickedMesh as import('@babylonjs/core').Node|null|undefined;while(node){if(meshes.get(node.id)?.mesh===node){onSelect(node.id);return;}node=node.parent;}};
+ scene.onPointerDown=(_,pick)=>{if(run||previewing)return;if(vertexMode){const data=authored?.entities.find(e=>e.id===selected)?.mesh;const mesh=meshes.get(selected)?.mesh;if(pick?.pickedMesh===mesh&&pick.pickedPoint&&data){const face=data.triangles[pick.faceId];if(face){let closest=face[0],distance=Infinity;for(const i of face){const point=vertexPoint(i);if(point){const d=Vector3.DistanceSquared(point,pick.pickedPoint);if(d<distance){distance=d;closest=i;}}}onVertexPick?.(closest);}}return;}let node=pick?.pickedMesh as import('@babylonjs/core').Node|null|undefined;while(node){if(meshes.get(node.id)?.mesh===node){onSelect(node.id);return;}node=node.parent;}};
  function sync(project:Project){
+ authored=project;
  environment.sync(project.environment);const nextGraphics=project.graphics??defaultGraphics;if(nextGraphics.renderScale!==graphics.renderScale)engine.setHardwareScalingLevel(1/nextGraphics.renderScale);graphics=nextGraphics;
  const ids=new Set(project.entities.map(e=>e.id));
  for(const [id,m] of meshes)if(!ids.has(id)){meshes.delete(id);destroy(m);}
@@ -57,12 +61,13 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message};
  const signature=JSON.stringify(status);if(signature!==run.last){run.last=signature;run.notify(status);}
  }
+ if(marker){const point=!run&&!previewing&&vertexMode?vertexPoint(vertexIndex):null;marker.setEnabled(!!point);if(point){marker.position.copyFrom(point);marker.scaling.setAll(Math.max(.2,camera.radius/12));}}
  scene.render();if(onMetrics&&performance.now()-lastMetrics>=750){lastMetrics=performance.now();onMetrics({fps:Math.round(engine.getFps()),meshes:scene.meshes.length,vertices:scene.getTotalVertices(),width:engine.getRenderWidth(),height:engine.getRenderHeight()});}};
  engine.runRenderLoop(render);
  const observer=new ResizeObserver(()=>engine.resize());observer.observe(canvas);
- return {sync,setControl(c:Control,active:boolean){if(!run)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewing=time!==null;sync(project);if(time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
+ return {sync,setVertexMode(enabled:boolean,index:number){vertexMode=enabled;vertexIndex=index;refreshGizmo();},setControl(c:Control,active:boolean){if(!run)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewing=time!==null;sync(project);if(time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
  const state=begin(project);const player=project.entities.find(e=>e.role==='player')!;
  previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length,elapsed:0};refreshGizmo();
  },stop(project:Project){run=null;previewing=false;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
- dispose(){disposed=true;run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
+ dispose(){disposed=true;run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();marker?.dispose(false,true);shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
 }
