@@ -25,7 +25,7 @@ async function readWorkspace():Promise<WorkspaceSnapshot>{
 }
 /** The revision comparison and writes are atomic across browser tabs. */
 async function write(project:Project,expected?:string|null):Promise<string>{
- const db=await open();const next=crypto.randomUUID();
+ const next=crypto.randomUUID();const db=await open();
  try{return await new Promise<string>((resolve,reject)=>{
   const tx=db.transaction(STORE,'readwrite'),store=tx.objectStore(STORE);
   let conflict=false;
@@ -43,6 +43,7 @@ async function loadWorkspace():Promise<{project:Project|null;revision:string|nul
  let {value,revision}=await readWorkspace();
  if(value!==undefined)return {project:parseProject(JSON.stringify(value)),revision};
  const legacy=localStorage.getItem(LEGACY);if(!legacy)return {project:null,revision};
+ // Retain the legacy backup; do not delete a user's only previous copy.
  const project=parseProject(legacy);
  try{revision=await write(project,revision);return {project,revision};}
  catch(error){
@@ -52,7 +53,6 @@ async function loadWorkspace():Promise<{project:Project|null;revision:string|nul
   if(latest.value===undefined)throw error;
   return {project:parseProject(JSON.stringify(latest.value)),revision:latest.revision};
  }
- // Retain the legacy backup; do not delete a user's only previous copy.
 }
 export async function restore():Promise<Project|null>{return (await loadWorkspace()).project;}
 let pending:Promise<void>=Promise.resolve();
@@ -62,12 +62,14 @@ export function persist(project:Project):Promise<void>{
 }
 /** One session per editor tab. A stale session cannot overwrite a newer saved revision. */
 export function createWorkspaceSession(){
- let revision:string|null|undefined;let queue:Promise<void>=Promise.resolve();
+ let revision:string|null|undefined;let initial:Project|null= null;let queue:Promise<void>=Promise.resolve();
  return {
-  async restore():Promise<Project|null>{const loaded=await loadWorkspace();revision=loaded.revision;return loaded.project;},
+  async restore():Promise<Project|null>{const loaded=await loadWorkspace();revision=loaded.revision;initial=loaded.project;return loaded.project;},
   persist(project:Project,overwrite=false):Promise<void>{
    const result=queue.catch(()=>{}).then(async()=>{
     if(revision===undefined&&!overwrite)throw Error('Workspace has not been restored');
+    // The editor's initial immutable snapshot is already saved; opening a second tab is not a write.
+    const unchanged=!overwrite&&project===initial;initial=null;if(unchanged)return;
     revision=await write(project,overwrite?undefined:revision);
    });
    queue=result;return result;
