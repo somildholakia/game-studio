@@ -37,3 +37,10 @@ describe('vertical physics',()=>{
  expect(state.respawns).toBe(1);expect(state.collected.size).toBe(0);
  });
 });
+
+it('dispatches collect events only once per item and preserves the authored rules',()=>{
+ const p=world();p.logic={autoWin:false,rules:[{id:'s',event:'start',minScore:0,action:{kind:'message',text:'Begin'}},{id:'a',event:'collect',minScore:0,action:{kind:'score',amount:10}},{id:'b',event:'goal',minScore:10,action:{kind:'win'}}]};
+ let state=begin(p);expect(state.logic.message).toBe('Begin');
+ for(let i=0;i<60;i++)state=step(p,state,{x:1,z:0},.05);
+ expect(state.logic.score).toBe(10);expect(state.won).toBe(true);
+});
