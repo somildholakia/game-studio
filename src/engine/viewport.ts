@@ -10,6 +10,7 @@ import {createPrimitive} from './geometry';
 import {loadModel} from './modelLoader';
 import {createAudio,defaultAudio} from '../runtime/audio';
 import type {Control} from '../runtime/controls';
+import {triggerBounds} from '../runtime/patrol';
 import {sample} from '../core/animation';
 import type {Project} from '../core/project';
 import {begin,advance,compileWorld,type GameState} from '../runtime/simulation';
@@ -58,7 +59,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.elapsed,moving,run.state.grounded);}}
  for(const [id,body] of run.state.bodies)meshes.get(id)?.mesh.position.set(...body.position);
  camera.setTarget(new Vector3(...run.state.position));
- for(const item of run.world.pickups)meshes.get(item.id)?.mesh.setEnabled(!run.state.collected.has(item.id));
+ for(const item of [...run.world.pickups,...run.world.hazards]){const mesh=meshes.get(item.id)?.mesh;if(item.patrol)mesh?.position.set(...triggerBounds(item,run.state.elapsed).center);if(run.state.collected.has(item.id))mesh?.setEnabled(false);else mesh?.setEnabled(true);}
  const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message};
  const signature=JSON.stringify(status);if(signature!==run.last){run.last=signature;run.notify(status);}
  }
