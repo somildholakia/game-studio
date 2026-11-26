@@ -1,0 +1,12 @@
+import {parseProject} from '../core/project';
+import {mountViewport} from '../engine/viewport';
+const canvas=document.querySelector<HTMLCanvasElement>('#game')!;
+const hud=document.querySelector<HTMLElement>('#hud')!;
+const restart=document.querySelector<HTMLButtonElement>('#restart')!;
+try{
+ const project=parseProject(document.querySelector('#project')?.textContent??'');
+ const viewport=mountViewport(canvas,()=>{});
+ const play=()=>viewport.start(project,s=>{hud.textContent=s.won?'Level complete!':`Collectibles ${s.collected} / ${s.total}`;});
+ restart.addEventListener('click',play);play();
+ window.addEventListener('pagehide',()=>viewport.dispose(),{once:true});
+}catch(error){hud.textContent=String(error);restart.disabled=true;}
