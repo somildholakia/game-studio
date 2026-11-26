@@ -185,3 +185,12 @@ test('author a named counter rule and display it during play',async({page})=>{
  await rule.getByLabel('Counter name').fill('keys');await rule.getByLabel('Counter amount').fill('3');
  await page.getByLabel('Show named counters').check();await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.locator('.game-hud')).toContainText('keys: 3');
 });
+
+test('export a custom GLB and reuse it in the asset library',async({page},testInfo)=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export mesh GLB (solid material)',exact:true}).click();
+ const file=await download;const path=testInfo.outputPath('model.glb');await file.saveAs(path);
+ await page.locator('input[accept=".glb"]').setInputFiles(path);
+ const models=page.getByRole('group',{name:'3D models',exact:true});await expect(models.getByText('model.glb',{exact:true})).toBeVisible();
+ await models.getByRole('button',{name:'Place',exact:true}).click();await expect(page.getByRole('button',{name:'model.glb',exact:true})).toBeVisible();
+});
