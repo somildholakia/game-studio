@@ -8,29 +8,71 @@ function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{
  request.onblocked=()=>{blocked=true;reject(Error('Close other Game Studio tabs to upgrade storage.'));};
  request.onsuccess=()=>{if(blocked){request.result.close();return;}request.result.onversionchange=()=>request.result.close();resolve(request.result);};
 });}
-async function read():Promise<unknown>{
+// Keep the original active-project record format for backward-readable backups.
+// A separate revision is updated in the same IndexedDB transaction.
+const REVISION='active:revision';
+type WorkspaceSnapshot={value:unknown;revision:string|null};
+export class WorkspaceConflictError extends Error{
+ constructor(){super('Another Game Studio tab saved a different version. Export your work before replacing the saved workspace.');this.name='WorkspaceConflictError';}
+}
+async function readWorkspace():Promise<WorkspaceSnapshot>{
  const db=await open();try{return await new Promise((resolve,reject)=>{
- const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).get(KEY);
- tx.oncomplete=()=>resolve(req.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error??Error('Read aborted'));
+  const tx=db.transaction(STORE,'readonly'),store=tx.objectStore(STORE);
+  const project=store.get(KEY),revision=store.get(REVISION);
+  tx.oncomplete=()=>resolve({value:project.result,revision:typeof revision.result==='string'?revision.result:null});
+  tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error??Error('Read aborted'));
  });}finally{db.close();}
 }
-async function write(project:Project):Promise<void>{
- const db=await open();try{await new Promise<void>((resolve,reject)=>{
- const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(project,KEY);
- tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error??Error('Save aborted'));
+/** The revision comparison and writes are atomic across browser tabs. */
+async function write(project:Project,expected?:string|null):Promise<string>{
+ const db=await open();const next=crypto.randomUUID();
+ try{return await new Promise<string>((resolve,reject)=>{
+  const tx=db.transaction(STORE,'readwrite'),store=tx.objectStore(STORE);
+  let conflict=false;
+  tx.oncomplete=()=>resolve(next);tx.onerror=()=>reject(tx.error??Error('Save failed'));
+  tx.onabort=()=>reject(conflict?new WorkspaceConflictError():tx.error??Error('Save aborted'));
+  const revision=store.get(REVISION);
+  revision.onsuccess=()=>{
+   const actual=typeof revision.result==='string'?revision.result:null;
+   if(expected!==undefined&&expected!==actual){conflict=true;tx.abort();return;}
+   store.put(project,KEY);store.put(next,REVISION);
+  };
  });}finally{db.close();}
 }
-export async function restore():Promise<Project|null>{
- const value=await read();
- if(value!==undefined)return parseProject(JSON.stringify(value));
- const legacy=localStorage.getItem(LEGACY);if(!legacy)return null;
- const project=parseProject(legacy);await write(project);
+async function loadWorkspace():Promise<{project:Project|null;revision:string|null}>{
+ let {value,revision}=await readWorkspace();
+ if(value!==undefined)return {project:parseProject(JSON.stringify(value)),revision};
+ const legacy=localStorage.getItem(LEGACY);if(!legacy)return {project:null,revision};
+ const project=parseProject(legacy);
+ try{revision=await write(project,revision);return {project,revision};}
+ catch(error){
+  if(!(error instanceof WorkspaceConflictError))throw error;
+  // Another tab won the migration; use its committed version rather than overwrite it.
+  const latest=await readWorkspace();
+  if(latest.value===undefined)throw error;
+  return {project:parseProject(JSON.stringify(latest.value)),revision:latest.revision};
+ }
  // Retain the legacy backup; do not delete a user's only previous copy.
- return project;
 }
+export async function restore():Promise<Project|null>{return (await loadWorkspace()).project;}
 let pending:Promise<void>=Promise.resolve();
 export function persist(project:Project):Promise<void>{
- const result=pending.catch(()=>{}).then(()=>write(project));pending=result;return result;
+ const result=pending.catch(()=>{}).then(()=>write(project)).then(()=>{});
+ pending=result;return result;
+}
+/** One session per editor tab. A stale session cannot overwrite a newer saved revision. */
+export function createWorkspaceSession(){
+ let revision:string|null|undefined;let queue:Promise<void>=Promise.resolve();
+ return {
+  async restore():Promise<Project|null>{const loaded=await loadWorkspace();revision=loaded.revision;return loaded.project;},
+  persist(project:Project,overwrite=false):Promise<void>{
+   const result=queue.catch(()=>{}).then(async()=>{
+    if(revision===undefined&&!overwrite)throw Error('Workspace has not been restored');
+    revision=await write(project,overwrite?undefined:revision);
+   });
+   queue=result;return result;
+  }
+ };
 }
 
 export type SavedProject={id:string;name:string;updatedAt:number};
