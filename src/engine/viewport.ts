@@ -1,4 +1,5 @@
 import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,type AssetContainer} from '@babylonjs/core';
+import {syncCharacterRig,animateCharacterRig} from './characterRig';
 import {createEnvironment} from './environment';
 import {createGizmos,type Tool,type Transform} from './gizmos';
 import {createMaterial,updateMaterial} from './material';
@@ -33,11 +34,11 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  for(const [id,m] of meshes)if(!ids.has(id)){meshes.delete(id);destroy(m);}
  for(const e of project.entities){let entry=meshes.get(e.id);
  const asset=e.kind==='model'?project.assets?.find(a=>a.id===e.assetId):undefined;
- const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain]);
+ const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain,e.rig?.hairStyle]);
  if(entry&&(entry.signature!==signature||entry.assetData!==asset?.data)){meshes.delete(e.id);destroy(entry);entry=undefined;}
- if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model')m.material=createMaterial(e,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
+ if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model'&&e.kind!=='character')m.material=createMaterial(e,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
  if(asset){const current=entry;const valid=()=>!disposed&&meshes.get(e.id)===current;void loadModel(asset,scene,m,valid).then(container=>{if(container&&valid())current.container=container;else if(container){container.removeAllFromScene();container.dispose();}}).catch(err=>{if(valid())onError('Model '+e.name+': '+String(err));});}}
- const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);updateMaterial(m,e);}
+ const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);updateMaterial(m,e);if(e.kind==='character')syncCharacterRig(m,e);}
  refreshGizmo();
  }
  function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
@@ -46,7 +47,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const input={x:Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft')),z:Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown')),jump:touch.has('jump')||keys.has(' ')};
  const dt=engine.getDeltaTime()/1000;if(!run.state.won)run.elapsed+=Math.min(.1,Math.max(0,dt));const before=run.state;run.state=advance(run.world,run.state,input,dt);const sound=run.project.audio??defaultAudio;
  if(run.state.respawns>before.respawns)audio.play(sound,'respawn');else if(run.state.collected.size>before.collected.size)audio.play(sound,'collect');if(before.grounded&&run.state.velocityY>0)audio.play(sound,'jump');if(!before.won&&run.state.won)audio.play(sound,'win');applyAnimation(run.project,run.elapsed);
- const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);
+ const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.elapsed,moving,run.state.grounded);}}
  camera.setTarget(new Vector3(...run.state.position));
  for(const item of run.world.pickups)meshes.get(item.id)?.mesh.setEnabled(!run.state.collected.has(item.id));
  const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message};
