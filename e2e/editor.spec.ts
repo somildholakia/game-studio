@@ -302,3 +302,22 @@ test('persist animation interpolation and ping-pong loop options',async({page})=
  await expect(page.getByLabel('Interpolation',{exact:true})).toHaveValue('smooth');
  await expect(page.getByLabel('Ping-pong loop',{exact:true})).toBeChecked();
 });
+
+test('duplicate a level with independent objects and undo the duplication',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run',exact:true}).click();
+ const levels=page.getByRole('group',{name:'Level Manager',exact:true});
+ await levels.getByRole('button',{name:'Duplicate level 1',exact:true}).click();
+ await expect(levels.getByText('2. Treasure Run copy (editing)',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Gem A collectible',exact:true}).click();
+ await page.getByLabel('Name',{exact:true}).fill('Copied gem');
+ await levels.getByRole('button',{name:'Edit level 1',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Gem A collectible',exact:true})).toBeVisible();
+ await levels.getByRole('button',{name:'Edit level 2',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Copied gem collectible',exact:true})).toBeVisible();
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();
+ await expect(levels.getByText('2. Treasure Run copy (editing)',{exact:true})).toBeVisible();
+ await levels.getByRole('button',{name:'Duplicate level 2',exact:true}).click();
+ await expect(levels.getByText('3. Treasure Run copy copy (editing)',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(levels.getByText('3. Treasure Run copy copy (editing)',{exact:true})).toHaveCount(0);
+});

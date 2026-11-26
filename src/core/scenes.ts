@@ -21,6 +21,28 @@ export function addScene(p:Project,name:string):Project{
  const s:SceneData={id:crypto.randomUUID(),name:title,entities:[entity('ground'),{...entity('character'),role:'player',position:[0,.85,0]}]};
  return {...sceneProject(p,s),levels:scenes,sceneOrder:[...scenes.map(s=>s.id),s.id]};
 }
+/** Copy a level's authored state, with fresh entity and rule IDs and remapped event sources. */
+export function duplicateScene(p:Project,id:string,name?:string):Project{
+ const scenes=orderedScenes(p),index=scenes.findIndex(s=>s.id===id);
+ if(index<0)throw Error('Unknown level');
+ if(scenes.length>=MAX_SCENES)throw Error('Level limit reached');
+ const source=scenes[index],title=(name??(source.name.slice(0,195)+' copy')).trim();
+ if(!title||title.length>200)throw Error('Enter a level name');
+ if(scenes.reduce((total,s)=>total+s.entities.length,0)+source.entities.length>20000)throw Error('Game exceeds the 20,000 entity limit.');
+ const copy=structuredClone(source),ids=new Map<string,string>();
+ copy.id=crypto.randomUUID();copy.name=title;
+ for(const e of copy.entities){const previous=e.id;e.id=crypto.randomUUID();ids.set(previous,e.id);}
+ if(copy.logic)for(const rule of copy.logic.rules){
+  rule.id=crypto.randomUUID();
+  if(rule.sourceId!==undefined){const old=rule.sourceId;
+   // Preserve an unresolved target as unresolved rather than broadening it to every object.
+   if(!ids.has(old))ids.set(old,crypto.randomUUID());
+   rule.sourceId=ids.get(old)!;
+  }
+ }
+ const order=scenes.map(s=>s.id);order.splice(index+1,0,copy.id);
+ return {...sceneProject(p,copy),levels:scenes,sceneOrder:order};
+}
 export function renameScene(p:Project,name:string):Project{const title=name.trim();if(!title||title.length>200)throw Error('Enter a level name');return {...p,sceneId:p.sceneId??MAIN_SCENE,sceneName:title};}
 export function moveScene(p:Project,id:string,direction:-1|1):Project{
  const order=orderedScenes(p).map(s=>s.id),i=order.indexOf(id),j=i+direction;if(i<0||j<0||j>=order.length)return p;[order[i],order[j]]=[order[j],order[i]];return {...p,sceneOrder:order};
