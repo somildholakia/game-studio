@@ -17,7 +17,7 @@ export type Role=typeof roles[number];
 export const kinds=['box','sphere','ground','cylinder','cone','torus','character','model','mesh','terrain'] as const;
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
 export type MaterialStyle={metallic:number;roughness:number;emissive:string};
-export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig};
+export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string};
 export type Project={version:1;name:string;entities:Entity[];assets?:ModelAsset[];prefabs?:Prefab[];physics?:PhysicsSettings;logic?:Logic;audio?:AudioSettings;environment?:Environment;sceneId?:string;sceneName?:string;levels?:SceneData[];sceneOrder?:string[];presentation?:Presentation;graphics?:GraphicsSettings};
 export function entity(kind:Entity['kind']):Entity {
  return {id:crypto.randomUUID(),name:kind,kind,position:[0,kind==='ground'||kind==='terrain'?0:1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'decoration',...(kind==='terrain'?{terrain:{...defaultTerrain},color:'#527c50'}:{}),...(kind==='mesh'?{mesh:cubeMesh()}:{}),...(kind==='character'?{character:{bodyWidth:1,headSize:1,limbLength:1}}:{})};
@@ -38,6 +38,7 @@ export function parseProject(raw:string):Project {
  function readEntity(e:any):Entity {
  if(!e||typeof e.id!=='string'||!e.id||e.id.length>200||typeof e.name!=='string'||e.name.length>200||!kinds.includes(e.kind)||!vec(e.position)||!vec(e.rotation)||!vec(e.scale)||typeof e.color!=='string'||!/^#[0-9a-f]{6}$/i.test(e.color)||(e.role!==undefined&&!roles.includes(e.role))||(['ground','model','mesh','terrain'].includes(e.kind)&&e.role&&e.role!=='decoration')||(e.kind==='model'&&!assetIds.has(e.assetId)))throw Error('Invalid entity');
  const result:Entity={id:e.id,name:e.name,kind:e.kind,position:e.position,rotation:e.rotation,scale:e.scale,color:e.color,role:e.role??'decoration'};
+ if(e.prefabId!==undefined){if(typeof e.prefabId!=='string'||!e.prefabId||e.prefabId.length>200)throw Error('Invalid prefab reference');result.prefabId=e.prefabId;}
  if(e.kind==='model')result.assetId=e.assetId;
  if(e.animation!==undefined)result.animation=readClip(e.animation);
  if(e.kind==='mesh')result.mesh=readMesh(e.mesh);
@@ -56,6 +57,7 @@ export function parseProject(raw:string):Project {
  const sceneOrder=p.sceneOrder??[...levelIds];if(!Array.isArray(sceneOrder)||sceneOrder.length!==levelIds.size||new Set(sceneOrder).size!==levelIds.size||!sceneOrder.every((id:unknown)=>validId(id)&&levelIds.has(id)))throw Error('Invalid level order');
  const prefabIds=new Set<string>();const input=p.prefabs??[];
  if(!Array.isArray(input)||input.length>1000)throw Error('Invalid prefab library');
- const prefabs:Prefab[]=input.map((f:any)=>{if(!f||typeof f.id!=='string'||!f.id||f.id.length>200||prefabIds.has(f.id)||typeof f.name!=='string'||f.name.length>200)throw Error('Invalid prefab');prefabIds.add(f.id);const source=readEntity(f.source);if(source.role==='player')source.role='decoration';return {id:f.id,name:f.name,source};});
+ const prefabs:Prefab[]=input.map((f:any)=>{if(!f||typeof f.id!=='string'||!f.id||f.id.length>200||prefabIds.has(f.id)||typeof f.name!=='string'||f.name.length>200)throw Error('Invalid prefab');prefabIds.add(f.id);const source=readEntity(f.source);if(source.role==='player')source.role='decoration';delete source.prefabId;return {id:f.id,name:f.name,source};});
+ const prefabMap=new Map(prefabs.map(f=>[f.id,f.source.kind]));for(const e of [...entities,...levels.flatMap(l=>l.entities)])if(e.prefabId&&prefabMap.get(e.prefabId)!==e.kind)throw Error('Missing or incompatible prefab reference');
  return {version:1,name:p.name,entities,assets,prefabs,physics:readPhysics(p.physics),logic:readLogic(p.logic),audio:readAudio(p.audio),environment:readEnvironment(p.environment),presentation:readPresentation(p.presentation),graphics:readGraphics(p.graphics),...(p.sceneId!==undefined||p.sceneName!==undefined||p.levels!==undefined||p.sceneOrder!==undefined?{sceneId,sceneName,levels,sceneOrder}:{})};
 }
