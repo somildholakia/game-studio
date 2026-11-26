@@ -17,7 +17,11 @@ export function entity(kind:Entity['kind']):Entity {
 }
 export function initialProject():Project {return {version:1,name:'Untitled world',entities:[entity('ground'),entity('box')],assets:[],prefabs:[]};}
 export function replaceEntity(p:Project,e:Entity):Project {return {...p,entities:p.entities.map(x=>x.id===e.id?e:e.role==='player'&&e.role===x.role?{...x,role:'decoration'}:x)};}
-export function duplicateEntity(e:Entity):Entity {return {...structuredClone(e),id:crypto.randomUUID(),name:(e.name+' copy').slice(0,200),role:e.role==='player'?'decoration':e.role,position:[Math.min(100000,e.position[0]+1),e.position[1],e.position[2]]};}
+export function duplicateEntity(e:Entity):Entity {
+ const copy=structuredClone(e);const offset=Math.min(1,100000-copy.position[0],...(copy.animation?.keys.map(k=>100000-k.position[0])??[]));copy.position[0]+=offset;
+ if(copy.animation)for(const key of copy.animation.keys)key.position[0]+=offset;
+ return {...copy,id:crypto.randomUUID(),name:(e.name+' copy').slice(0,200),role:e.role==='player'?'decoration':e.role};
+}
 const vec=(v:unknown):v is Vec3=>Array.isArray(v)&&v.length===3&&v.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=100000);
 const proportion=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n)&&n>=.6&&n<=1.4;
 export function parseProject(raw:string):Project {
