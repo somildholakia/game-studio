@@ -48,6 +48,44 @@ function validateBinaryDeclarations(json:any,binLength:number):void{
   }
  }
 }
+// glTF nodes must form disjoint, strict trees. Bound renderer traversal and repeated mesh instances.
+function validateSceneGraph(json:any):void{
+ const nodes=json.nodes===undefined?[]:json.nodes,scenes=json.scenes===undefined?[]:json.scenes,meshes=json.meshes;
+ if(!Array.isArray(nodes)||nodes.length>2048||!Array.isArray(scenes)||scenes.length>64||meshes.length>512)fail();
+ const object=(value:unknown):boolean=>!!value&&typeof value==='object'&&!Array.isArray(value);
+ const index=(value:unknown,length:number):value is number=>uint(value)&&value<length;
+ const parent=new Int32Array(nodes.length).fill(-1),children:number[][]=[];
+ let primitiveCount=0,instances=0;
+ for(const mesh of meshes){
+  if(!object(mesh)||!Array.isArray(mesh.primitives))fail();
+  primitiveCount+=mesh.primitives.length;if(primitiveCount>4096)fail();
+ }
+ for(let i=0;i<nodes.length;i++){
+  const node=nodes[i];if(!object(node))fail();
+  if(node.mesh!==undefined){if(!index(node.mesh,meshes.length))fail();instances+=meshes[node.mesh].primitives.length;if(instances>4096)fail();}
+  const list=node.children===undefined?[]:node.children;
+  if(!Array.isArray(list)||list.length>nodes.length)fail();
+  for(const child of list){
+   if(!index(child,nodes.length)||parent[child]!==-1)fail();
+   parent[child]=i;
+  }
+  children.push(list);
+ }
+ // Traverse all roots, including nodes outside the selected scene; a cycle has no root.
+ const stack:{id:number;depth:number}[]=[];
+ for(let i=0;i<nodes.length;i++)if(parent[i]===-1)stack.push({id:i,depth:1});
+ let visited=0;
+ while(stack.length){const {id,depth}=stack.pop()!;if(depth>64)fail();visited++;for(const child of children[id])stack.push({id:child,depth:depth+1});}
+ if(visited!==nodes.length)fail();
+ for(const scene of scenes){
+  if(!object(scene))fail();
+  const roots=scene.nodes===undefined?[]:scene.nodes;
+  if(!Array.isArray(roots)||roots.length>nodes.length)fail();
+  const seen=new Set<number>();
+  for(const root of roots){if(!index(root,nodes.length)||parent[root]!==-1||seen.has(root))fail();seen.add(root);}
+ }
+ if(json.scene!==undefined&&!index(json.scene,scenes.length))fail();
+}
 export function validateGlb(bytes:Uint8Array):void {
  if(bytes.length<20||bytes.length>MAX_GLB_BYTES)fail();
  const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
@@ -62,6 +100,7 @@ export function validateGlb(bytes:Uint8Array):void {
  for(const [k,value] of Object.entries(node)){if(k==='uri'||k==='extensions')fail();if(value&&typeof value==='object')queue.push(value);}}
  const offset=20+n;
  if(offset<bytes.length&&(bytes.length-offset<8||v.getUint32(offset+4,true)!==0x004e4942||v.getUint32(offset,true)%4!==0||offset+8+v.getUint32(offset,true)!==bytes.length))fail();
+ validateSceneGraph(json);
  validateBinaryDeclarations(json,offset<bytes.length?v.getUint32(offset,true):0);
 }
 export function decodeAsset(data:string):Uint8Array<ArrayBuffer>{

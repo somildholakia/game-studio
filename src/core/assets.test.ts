@@ -56,3 +56,29 @@ describe('GLB decoded resource budgets',()=>{
   expect(()=>validateGlb(glb({...minimal,accessors:[zero]}))).not.toThrow();
  });
 });
+
+describe('GLB scene graph safety',()=>{
+ it('accepts bounded trees and shared meshes across independent nodes',()=>{
+  expect(()=>validateGlb(glb({...minimal,nodes:[{children:[1,2]},{mesh:0},{mesh:0}],scenes:[{nodes:[0]},{nodes:[0]}],scene:1}))).not.toThrow();
+ });
+ it('rejects cycles, repeated children, multiple parents and bad references',()=>{
+  for(const nodes of [[{children:[0]}],[{children:[1]},{children:[0]}],[{children:[1,1]},{}],[{children:[2]},{children:[2]},{}],[{children:[4]}],[{mesh:1}],[null]]){
+   expect(()=>validateGlb(glb({...minimal,nodes}))).toThrow();
+  }
+ });
+ it('rejects invalid scene roots and selected scenes',()=>{
+  const nodes=[{children:[1]},{}];
+  for(const scenes of [[{nodes:[1]}],[{nodes:[0,0]}],[{nodes:[2]}],[null]]){
+   expect(()=>validateGlb(glb({...minimal,nodes,scenes}))).toThrow();
+  }
+  expect(()=>validateGlb(glb({...minimal,nodes,scenes:[{nodes:[0]}],scene:1}))).toThrow();
+ });
+ it('enforces depth, node and repeated primitive budgets',()=>{
+  const chain=(length:number)=>Array.from({length},(_,i)=>i+1<length?{children:[i+1]}:{});
+  expect(()=>validateGlb(glb({...minimal,nodes:chain(64)}))).not.toThrow();
+  expect(()=>validateGlb(glb({...minimal,nodes:chain(65)}))).toThrow();
+  expect(()=>validateGlb(glb({...minimal,nodes:Array.from({length:2049},()=>({}))}))).toThrow();
+  const meshes=[{primitives:Array.from({length:32},()=>({}))}];
+  expect(()=>validateGlb(glb({...minimal,meshes,nodes:Array.from({length:129},()=>({mesh:0}))}))).toThrow();
+ });
+});
