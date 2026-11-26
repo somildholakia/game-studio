@@ -30,8 +30,8 @@ Verified historical baselines:
 - Complete advanced modeling / linked prefab baseline: 45805425149.
 - Complete dynamics, patrol and diagnostics baseline: 45806635083.
 
-The cross-browser workflow is configured for relevant pull request changes and manual dispatch (the latter depends on default-branch availability). Configuration does not certify browser compatibility. The texture accessibility fix passed Validate run 45829261366; this is a historical baseline only.
+The cross-browser workflow is configured for relevant pull request changes and manual dispatch (the latter depends on default-branch availability). Configuration alone does not certify browser compatibility. The texture accessibility fix passed Validate run 45829261366; this is a historical baseline only.
 
-A dependency lockfile was generated in successful Validate run 45829995781; CI now uses npm ci, with clean-install verification of the committed lock pending.
+A dependency lockfile was generated in successful Validate run 45829995781; CI now uses npm ci. The current PR head `faf31081f385acd939dc436d3d8f6e2d9021bbca` passed Validate run 45832800472, including clean install, unit tests, production build, and Chromium end-to-end tests. Browser compatibility run 45832800491 passed the end-to-end suite in Chromium, Firefox, and WebKit. These checks cover automated desktop browser runs only; real-device, GPU, context-loss, performance, security, durability, scale, and full product release gates remain open.
 
-Historical baselines do not certify the current branch head. Latest CI results must be checked separately. No live third-party credentials are used in tests.
+No live third-party credentials are used in tests. Recheck the current PR head's Actions before treating these checkpoint results as current.
