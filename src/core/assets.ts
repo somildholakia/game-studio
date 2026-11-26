@@ -3,6 +3,38 @@ export const MAX_GLB_BYTES=2*1024*1024;
 export const MAX_ASSET_BYTES=3*1024*1024;
 export type ModelAsset={id:string;name:string;format:'glb';data:string};
 function fail():never {throw Error('Unsupported or malformed GLB: use a self-contained, uncompressed glTF 2.0 binary without extensions.');}
+// Bound declared decoded geometry as well as the compressed/envelope byte size.
+const MAX_ACCESSOR_ELEMENTS=250_000;
+const MAX_DECODED_ACCESSOR_BYTES=16*1024*1024;
+function uint(value:unknown):value is number{return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;}
+function validateBinaryDeclarations(json:any,binLength:number):void{
+ const buffers=json.buffers??[],views=json.bufferViews??[],accessors=json.accessors??[];
+ if(!Array.isArray(buffers)||buffers.length>1||!Array.isArray(views)||views.length>4096||!Array.isArray(accessors)||accessors.length>4096)fail();
+ if(buffers.length){
+  const size=buffers[0]?.byteLength;
+  if(!uint(size)||size===0||size>binLength||binLength-size>3)fail();
+ }else if(binLength||views.length)fail();
+ for(const view of views){
+  const start=view?.byteOffset??0,length=view?.byteLength;
+  if(view?.buffer!==0||!uint(start)||!uint(length)||length===0||start>buffers[0].byteLength||length>buffers[0].byteLength-start)fail();
+  if(view.byteStride!==undefined&&(!uint(view.byteStride)||view.byteStride<4||view.byteStride>252||view.byteStride%4!==0))fail();
+ }
+ const components:Record<string,number>={SCALAR:1,VEC2:2,VEC3:3,VEC4:4,MAT2:4,MAT3:9,MAT4:16};
+ const sizes:Record<string,number>={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4};
+ let total=0;
+ for(const accessor of accessors){
+  const count=accessor?.count,type=accessor?.type,component=accessor?.componentType;
+  if(typeof type!=='string'||!Object.hasOwn(components,type)||!uint(component)||!Object.hasOwn(sizes,component)||!uint(count)||count===0||count>MAX_ACCESSOR_ELEMENTS)fail();
+  // Conservatively budget padded matrices and float conversion by the renderer.
+  const decoded=count*components[type]*4;total+=decoded;if(total>MAX_DECODED_ACCESSOR_BYTES)fail();
+  if(accessor.bufferView!==undefined&&(!uint(accessor.bufferView)||accessor.bufferView>=views.length))fail();
+  if(accessor.byteOffset!==undefined&&!uint(accessor.byteOffset))fail();
+  if(accessor.sparse!==undefined){
+   const sparse=accessor.sparse;
+   if(!sparse||!uint(sparse.count)||sparse.count===0||sparse.count>count)fail();
+  }
+ }
+}
 export function validateGlb(bytes:Uint8Array):void {
  if(bytes.length<20||bytes.length>MAX_GLB_BYTES)fail();
  const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
@@ -17,6 +49,7 @@ export function validateGlb(bytes:Uint8Array):void {
  for(const [k,value] of Object.entries(node)){if(k==='uri'||k==='extensions')fail();if(value&&typeof value==='object')queue.push(value);}}
  const offset=20+n;
  if(offset<bytes.length&&(bytes.length-offset<8||v.getUint32(offset+4,true)!==0x004e4942||v.getUint32(offset,true)%4!==0||offset+8+v.getUint32(offset,true)!==bytes.length))fail();
+ validateBinaryDeclarations(json,offset<bytes.length?v.getUint32(offset,true):0);
 }
 export function decodeAsset(data:string):Uint8Array<ArrayBuffer>{
  if(data.length>Math.ceil(MAX_GLB_BYTES/3)*4)fail();
