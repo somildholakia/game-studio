@@ -18,3 +18,25 @@ export function subdivideFace(m:MeshData,index:number):MeshData{
  const n=m.vertices.length;
  return readMesh({vertices:[...m.vertices,center],triangles:[...m.triangles.slice(0,index),[t[0],t[1],n],[t[1],t[2],n],[t[2],t[0],n],...m.triangles.slice(index+1)]});
 }
+
+/** Split every triangle into four, sharing each edge midpoint with neighboring faces.
+ * This refines topology without changing the surface shape or face winding. */
+export function subdivideMesh(raw:MeshData):MeshData{
+ const mesh=readMesh(raw);
+ if(mesh.triangles.length*4>MAX_TRIANGLES)throw Error('Subdivision exceeds triangle limit');
+ const vertices=[...mesh.vertices],triangles:MeshData['triangles']=[];
+ const edges=new Map<string,number>();
+ const midpoint=(a:number,b:number):number=>{
+  const key=a<b?a+':'+b:b+':'+a;
+  const existing=edges.get(key);if(existing!==undefined)return existing;
+  if(vertices.length>=MAX_VERTICES)throw Error('Subdivision exceeds vertex limit');
+  const u=vertices[a],v=vertices[b],index=vertices.length;
+  vertices.push([(u[0]+v[0])/2,(u[1]+v[1])/2,(u[2]+v[2])/2]);
+  edges.set(key,index);return index;
+ };
+ for(const [a,b,c] of mesh.triangles){
+  const ab=midpoint(a,b),bc=midpoint(b,c),ca=midpoint(c,a);
+  triangles.push([a,ab,ca],[ab,b,bc],[ca,bc,c],[ab,bc,ca]);
+ }
+ return readMesh({vertices,triangles});
+}
