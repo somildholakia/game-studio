@@ -14,6 +14,6 @@ export function addModel(p:Project,asset:ModelAsset):Project{
  return existing?p:{...p,assets:validateAssets([...(p.assets??[]),asset])};
 }
 export function removeModel(p:Project,id:string):Project {
- if(p.entities.some(e=>e.assetId===id)||p.prefabs?.some(f=>f.source.assetId===id))throw Error('Remove all scene and prefab references first.');
+ if(p.entities.some(e=>e.assetId===id)||p.levels?.some(l=>l.entities.some(e=>e.assetId===id))||p.prefabs?.some(f=>f.source.assetId===id))throw Error('Remove all scene and prefab references first.');
  return {...p,assets:(p.assets??[]).filter(a=>a.id!==id)};
 }
