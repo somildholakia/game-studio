@@ -41,3 +41,26 @@ describe('AI environment, audio and presentation commands',()=>{
   ])expect(()=>previewPlan(p,plan([command]))).toThrow();
  });
 });
+
+it('duplicates a known level and includes the copied objects in review',()=>{
+ const p=initialProject(),before=JSON.stringify(p);
+ const result=previewPlan(p,plan([{op:'duplicate-level',id:'main',name:'Variant'}]));
+ expect(orderedScenes(result.next).map(s=>s.name)).toEqual(['Level 1','Variant']);
+ expect(result.next.entities[0].id).not.toBe(p.entities[0].id);expect(result.changes).toContain('Add level: Variant');
+ expect(result.changes).toContain('[Variant] Add: box (box)');expect(JSON.stringify(p)).toBe(before);
+ expect(()=>previewPlan(p,plan([{op:'duplicate-level',id:'unknown',name:'Variant'}]))).toThrow();
+});
+it('authors validated decorative animation and rejects incompatible roles or invalid keyframes',()=>{
+ const p=initialProject();const id=p.entities[1].id;
+ const pose={time:0,position:[0,1,0],rotation:[0,0,0],scale:[1,1,1]};
+ const clip={loop:true,pingPong:true,interpolation:'smooth',keys:[pose,{...pose,time:2,position:[4,1,0]}]};
+ const result=previewPlan(p,plan([{op:'edit',id,patch:{animation:clip}}]));
+ expect(result.next.entities[1].animation).toEqual(clip);
+ expect(result.details.some(d=>d.includes('animation:'))).toBe(true);
+ expect(()=>previewPlan(p,plan([{op:'edit',id,patch:{role:'player',animation:clip}}]))).toThrow();
+ expect(()=>previewPlan(p,plan([{op:'edit',id,patch:{animation:{...clip,keys:[{...pose,time:1}]}}}]))).toThrow();
+});
+it('rejects an AI rule that references an unknown or role-incompatible source',()=>{
+ const p=initialProject();
+ expect(()=>previewPlan(p,plan([{op:'logic',value:{autoWin:false,rules:[{id:'bad',event:'collect',sourceId:p.entities[0].id,minScore:0,action:{kind:'win'}}]}}]))).toThrow('incompatible');
+});
