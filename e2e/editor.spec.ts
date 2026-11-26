@@ -38,3 +38,17 @@ test('edit topology and capture animation poses',async({page})=>{
  await page.getByRole('button',{name:'Capture pose'}).click();await expect(page.getByText('1.00s',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Preview pose'}).click();await expect(page.getByRole('button',{name:'Stop preview'})).toBeVisible();
 });
+
+test('preview, approve and undo a declarative AI edit',async({page})=>{
+ await page.goto('/');
+ const ai=page.getByRole('group',{name:'AI Studio · Command preview',exact:true});
+ await ai.getByLabel('JSON edit plan').fill(JSON.stringify({version:1,summary:'Add a wall',commands:[{op:'add',kind:'box',patch:{name:'AI test wall',role:'solid',position:[2,1,0]}}]}));
+ await ai.getByRole('button',{name:'Validate and preview'}).click();
+ await expect(ai.getByText('Add: AI test wall (box)',{exact:true})).toBeVisible();
+ const wall=page.getByRole('button',{name:'AI test wall solid',exact:true});
+ await expect(wall).toHaveCount(0);
+ await ai.getByRole('button',{name:'Apply as one undoable edit'}).click();
+ await expect(wall).toBeVisible();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(wall).toHaveCount(0);
+});
