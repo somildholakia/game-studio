@@ -48,6 +48,70 @@ function validateBinaryDeclarations(json:any,binLength:number):void{
   }
  }
 }
+// Reject oversized image headers before handing compressed texture data to the browser.
+const MAX_IMAGE_DIMENSION=4096,MAX_IMAGE_PIXELS=16*1024*1024;
+function imagePixels(width:number,height:number):number{
+ if(!uint(width)||!uint(height)||!width||!height||width>MAX_IMAGE_DIMENSION||height>MAX_IMAGE_DIMENSION)fail();
+ return width*height;
+}
+function pngPixels(bytes:Uint8Array):number{
+ if(bytes.length<33||![137,80,78,71,13,10,26,10].every((b,i)=>bytes[i]===b))fail();
+ const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+ if(v.getUint32(8)!==13||v.getUint32(12)!==0x49484452)fail();
+ const pixels=imagePixels(v.getUint32(16),v.getUint32(20));
+ let offset=8,hasData=false,ended=false;
+ while(offset+12<=bytes.length){
+  const size=v.getUint32(offset),type=v.getUint32(offset+4);
+  if(size>bytes.length-offset-12)fail();
+  // Animated PNGs are outside this bounded static texture policy.
+  if(type===0x6163544c||type===0x6663544c||type===0x66644154)fail();
+  if(type===0x49484452&&offset!==8)fail();
+  if(type===0x49444154)hasData=true;
+  offset+=size+12;
+  if(type===0x49454e44){if(size!==0||offset!==bytes.length)fail();ended=true;break;}
+ }
+ if(!hasData||!ended)fail();
+ return pixels;
+}
+function jpegPixels(bytes:Uint8Array):number{
+ if(bytes.length<4||bytes[0]!==0xff||bytes[1]!==0xd8)fail();
+ const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+ let offset=2,pixels=0;
+ // Walk bounded metadata segments to the first scan. Do not decode entropy-coded data.
+ while(offset<bytes.length){
+  if(bytes[offset++]!==0xff)fail();
+  while(offset<bytes.length&&bytes[offset]===0xff)offset++;
+  if(offset>=bytes.length)fail();
+  const marker=bytes[offset++];
+  if(marker===0xd8||marker===0xd9||marker===0||marker===1||(marker>=0xd0&&marker<=0xd7))fail();
+  if(offset+2>bytes.length)fail();
+  const size=v.getUint16(offset);if(size<2||size>bytes.length-offset)fail();
+  if(marker===0xc0||marker===0xc1||marker===0xc2){
+   if(pixels||size<11||bytes[offset+2]!==8)fail();
+   const components=bytes[offset+7];if(![1,3,4].includes(components)||size!==8+3*components)fail();
+   pixels=imagePixels(v.getUint16(offset+5),v.getUint16(offset+3));
+  }else if(marker>=0xc0&&marker<=0xcf&&![0xc4,0xc8,0xcc].includes(marker))fail();
+  if(marker===0xda){if(!pixels||size<6||offset+size>=bytes.length)fail();return pixels;}
+  offset+=size;
+ }
+ return fail();
+}
+function validateImages(json:any,bin:Uint8Array):void{
+ const images=json.images===undefined?[]:json.images,views=json.bufferViews??[];
+ const textures=json.textures===undefined?[]:json.textures;
+ if(!Array.isArray(images)||images.length>64||!Array.isArray(textures)||textures.length>128)fail();
+ let pixels=0;
+ for(const image of images){
+  const index=image?.bufferView;if(!uint(index)||index>=views.length)fail();
+  const view=views[index];if(view.byteStride!==undefined)fail();
+  const start=view.byteOffset??0,data=bin.subarray(start,start+view.byteLength);
+  if(image.mimeType==='image/png')pixels+=pngPixels(data);
+  else if(image.mimeType==='image/jpeg')pixels+=jpegPixels(data);
+  else fail();
+  if(pixels>MAX_IMAGE_PIXELS)fail();
+ }
+ for(const texture of textures)if(!uint(texture?.source)||texture.source>=images.length)fail();
+}
 // glTF nodes must form disjoint, strict trees. Bound renderer traversal and repeated mesh instances.
 function validateSceneGraph(json:any):void{
  const nodes=json.nodes===undefined?[]:json.nodes,scenes=json.scenes===undefined?[]:json.scenes,meshes=json.meshes;
@@ -102,6 +166,7 @@ export function validateGlb(bytes:Uint8Array):void {
  if(offset<bytes.length&&(bytes.length-offset<8||v.getUint32(offset+4,true)!==0x004e4942||v.getUint32(offset,true)%4!==0||offset+8+v.getUint32(offset,true)!==bytes.length))fail();
  validateSceneGraph(json);
  validateBinaryDeclarations(json,offset<bytes.length?v.getUint32(offset,true):0);
+ validateImages(json,bytes.subarray(Math.min(offset+8,bytes.length)));
 }
 export function decodeAsset(data:string):Uint8Array<ArrayBuffer>{
  if(data.length>Math.ceil(MAX_GLB_BYTES/3)*4)fail();

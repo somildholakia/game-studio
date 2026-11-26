@@ -82,3 +82,43 @@ describe('GLB scene graph safety',()=>{
   expect(()=>validateGlb(glb({...minimal,meshes,nodes:Array.from({length:129},()=>({mesh:0}))}))).toThrow();
  });
 });
+
+describe('GLB embedded texture header budgets',()=>{
+ // Structural header fixtures, not complete decodable images; pixel decompression belongs to the browser.
+ function png(w:number,h:number){
+  const b=new Uint8Array(58),v=new DataView(b.buffer);
+  b.set([137,80,78,71,13,10,26,10]);v.setUint32(8,13);v.setUint32(12,0x49484452);
+  v.setUint32(16,w);v.setUint32(20,h);b[24]=8;b[25]=6;
+  v.setUint32(33,1);v.setUint32(37,0x49444154);v.setUint32(46,0);v.setUint32(50,0x49454e44);
+  return b;
+ }
+ function jpeg(w:number,h:number){
+  const b=new Uint8Array([0xff,0xd8,0xff,0xc0,0,11,8,0,0,0,0,1,1,0x11,0,0xff,0xda,0,8,1,1,0,0,63,0,0,0xff,0xd9]);
+  const v=new DataView(b.buffer);v.setUint16(7,h);v.setUint16(9,w);return b;
+ }
+ function textured(data:Uint8Array,mimeType:string,count=1,source=0){
+  const size=Math.ceil(data.length/4)*4;
+  const bytes=glb({...minimal,buffers:[{byteLength:data.length}],bufferViews:[{buffer:0,byteLength:data.length}],images:Array.from({length:count},()=>({bufferView:0,mimeType})),textures:[{source}]},size);
+  bytes.set(data,bytes.length-size);return bytes;
+ }
+ it('accepts bounded static PNG and JPEG headers',()=>{
+  expect(()=>validateGlb(textured(png(1024,1024),'image/png'))).not.toThrow();
+  expect(()=>validateGlb(textured(jpeg(1024,512),'image/jpeg'))).not.toThrow();
+ });
+ it('rejects zero or oversized image dimensions and cumulative pixel budgets',()=>{
+  expect(()=>validateGlb(textured(png(4097,1),'image/png'))).toThrow();
+  expect(()=>validateGlb(textured(jpeg(1,5000),'image/jpeg'))).toThrow();
+  expect(()=>validateGlb(textured(png(0,1),'image/png'))).toThrow();
+  expect(()=>validateGlb(textured(png(4096,4096),'image/png',2))).toThrow();
+ });
+ it('rejects mismatched MIME, bad texture sources, malformed chunks and animated PNG',()=>{
+  expect(()=>validateGlb(textured(png(1,1),'image/jpeg'))).toThrow();
+  expect(()=>validateGlb(textured(jpeg(1,1),'image/webp'))).toThrow();
+  expect(()=>validateGlb(textured(png(1,1),'image/png',1,1))).toThrow();
+  const bad=png(1,1);new DataView(bad.buffer).setUint32(33,0xffffffff);
+  expect(()=>validateGlb(textured(bad,'image/png'))).toThrow();
+  const animated=png(1,1);new DataView(animated.buffer).setUint32(37,0x6163544c);
+  expect(()=>validateGlb(textured(animated,'image/png'))).toThrow();
+  expect(()=>validateGlb(textured(jpeg(1,1).subarray(0,14),'image/jpeg'))).toThrow();
+ });
+});
