@@ -11,7 +11,7 @@ import {MAIN_SCENE,MAX_SCENES,type SceneData} from './scenes';
 import {readPresentation,type Presentation} from './presentation';
 import type {Prefab} from './prefabs';
 export type Vec3=[number,number,number];
-export const roles=['decoration','player','solid','collectible','goal'] as const;
+export const roles=['decoration','player','solid','collectible','goal','hazard','checkpoint'] as const;
 export type Role=typeof roles[number];
 export const kinds=['box','sphere','ground','cylinder','cone','torus','character','model','mesh','terrain'] as const;
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
