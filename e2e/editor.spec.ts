@@ -255,3 +255,24 @@ test('publish a self-contained HTML game with an escaped project title',async({p
  expect(await page.evaluate(()=>Reflect.get(window,'injected'))).toBeUndefined();
  expect(await page.locator('script').count()).toBe(2);
 });
+
+test('review and apply AI lighting, audio and game presentation settings as one edit',async({page})=>{
+ await page.goto('/');const ai=page.getByRole('group',{name:'AI Studio · Command preview',exact:true});
+ await ai.getByLabel('JSON edit plan').fill(JSON.stringify({version:1,summary:'Night atmosphere',commands:[
+  {op:'environment',patch:{sky:'#101828',fogEnabled:true}},
+  {op:'audio',patch:{enabled:true,volume:.3,tones:{collect:{frequency:660}}}},
+  {op:'presentation',patch:{hudTitle:'Night adventure',showCounters:true}}
+ ]}));
+ await ai.getByRole('button',{name:'Validate and preview'}).click();
+ await expect(ai.getByText('Update environment',{exact:true})).toBeVisible();
+ await expect(ai.getByText('Update game audio',{exact:true})).toBeVisible();
+ await expect(ai.getByText('Update game presentation',{exact:true})).toBeVisible();
+ await expect(page.getByLabel('Enable fog')).not.toBeChecked();
+ await ai.getByRole('button',{name:'Apply as one undoable edit'}).click();
+ await expect(page.getByLabel('Sky color')).toHaveValue('#101828');
+ await expect(page.getByLabel('Enable fog')).toBeChecked();await expect(page.getByLabel('Enable game sounds')).toBeChecked();
+ await expect(page.getByLabel('HUD title')).toHaveValue('Night adventure');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(page.getByLabel('Enable fog')).not.toBeChecked();await expect(page.getByLabel('Enable game sounds')).not.toBeChecked();
+ await expect(page.getByLabel('HUD title')).toHaveValue('');
+});
