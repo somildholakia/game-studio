@@ -27,4 +27,9 @@ Verified historical baselines:
 - Multi-level source checkpoint: 45803417454.
 - HUD and camera checkpoint: 45803505307.
 
+- Complete advanced modeling / linked prefab baseline: 45805425149.
+- Complete dynamics, patrol and diagnostics baseline: 45806635083.
+
+The cross-browser workflow is configured but not yet executed and certified. Manual dispatch depends on default-branch availability.
+
 Historical baselines do not certify the current branch head. Latest CI results must be checked separately. No live third-party credentials are used in tests.
