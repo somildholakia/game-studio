@@ -1,4 +1,5 @@
-import {Engine,Scene,ArcRotateCamera,Vector3,HemisphericLight,DirectionalLight,Mesh,type AssetContainer} from '@babylonjs/core';
+import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,type AssetContainer} from '@babylonjs/core';
+import {createEnvironment} from './environment';
 import {createGizmos,type Tool,type Transform} from './gizmos';
 import {createMaterial,updateMaterial} from './material';
 import {createPrimitive} from './geometry';
@@ -12,7 +13,7 @@ export type PlayStatus={collected:number;total:number;won:boolean;score:number;m
 export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void) {
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
- new HemisphericLight('light',new Vector3(0,1,0),scene);const sun=new DirectionalLight('sun',new Vector3(-.5,-1,.6),scene);sun.intensity=2;
+ const environment=createEnvironment(scene);
  const gizmos=onTransform?createGizmos(scene,onTransform):null;let selected='';let tool:Tool='move';let snap=false;let previewing=false;
  function refreshGizmo(){gizmos?.configure(run||previewing?null:meshes.get(selected)?.mesh??null,run||previewing?'select':tool,snap);}
  type Entry={mesh:Mesh;signature:string;assetData?:string;container?:AssetContainer};
@@ -27,6 +28,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);canvas.addEventListener('pointerdown',unlock);
  scene.onPointerDown=(_,pick)=>{if(run||previewing)return;let node=pick?.pickedMesh as import('@babylonjs/core').Node|null|undefined;while(node){if(meshes.get(node.id)?.mesh===node){onSelect(node.id);return;}node=node.parent;}};
  function sync(project:Project){
+ environment.sync(project.environment);
  const ids=new Set(project.entities.map(e=>e.id));
  for(const [id,m] of meshes)if(!ids.has(id)){meshes.delete(id);destroy(m);}
  for(const e of project.entities){let entry=meshes.get(e.id);
