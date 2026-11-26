@@ -9,7 +9,7 @@ import {createMaterial,updateMaterial} from './material';
 import {createPrimitive} from './geometry';
 import {loadModel} from './modelLoader';
 import {createAudio,defaultAudio} from '../runtime/audio';
-import {gamepadInput,type Control} from '../runtime/controls';
+import {pollGamepad,type Control} from '../runtime/controls';
 import {triggerBounds} from '../runtime/patrol';
 import {sample} from '../core/animation';
 import type {Project} from '../core/project';
@@ -31,10 +31,11 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const keys=new Set<string>();const touch=new Set<Control>();const audio=createAudio();
  const unlock=()=>{void audio.unlock().catch(()=>{});};
  let run:{project:Project;state:GameState;world:ReturnType<typeof compileWorld>;player:string;notify:(s:PlayStatus)=>void;last:string;total:number;elapsed:number}|null=null;
- const down=(e:KeyboardEvent)=>{if(run&&['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())){e.preventDefault();keys.add(e.key.toLowerCase());}};
+ const down=(e:KeyboardEvent)=>{if(run&&e.target===canvas&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())){e.preventDefault();keys.add(e.key.toLowerCase());}};
  const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
  const clear=()=>{keys.clear();touch.clear();};
- window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);canvas.addEventListener('pointerdown',unlock);
+ const clearKeys=()=>keys.clear();const visibility=()=>{if(document.hidden)clear();};
+ window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',visibility);canvas.addEventListener('blur',clearKeys);canvas.addEventListener('pointerdown',unlock);
  scene.onPointerDown=(_,pick)=>{if(run||previewing)return;if(vertexMode){const data=authored?.entities.find(e=>e.id===selected)?.mesh;const mesh=meshes.get(selected)?.mesh;if(pick&&mesh&&pick.pickedMesh===mesh&&pick.pickedPoint&&data){const face=data.triangles[pick.faceId];if(face){let closest=face[0],distance=Infinity;for(const i of face){const point=vertexPoint(i);if(point){const d=Vector3.DistanceSquared(point,pick.pickedPoint);if(d<distance){distance=d;closest=i;}}}onVertexPick?.(closest);}}return;}let node=pick?.pickedMesh as import('@babylonjs/core').Node|null|undefined;while(node){if(meshes.get(node.id)?.mesh===node){onSelect(node.id);return;}node=node.parent;}};
  function sync(project:Project){
  authored=project;
@@ -53,7 +54,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
  const render=()=>{
  if(run){
- const pad=gamepadInput(navigator.getGamepads?.()??[]);
+ const pad=pollGamepad(()=>document.hidden?[]:navigator.getGamepads?.()??[]);
  const horizontal=Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft'));
  const vertical=Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown'));
  const input={x:horizontal||pad.x,z:vertical||pad.z,jump:touch.has('jump')||keys.has(' ')||pad.jump};
@@ -72,7 +73,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const observer=new ResizeObserver(()=>engine.resize());observer.observe(canvas);
  return {sync,setVertexMode(enabled:boolean,index:number){vertexMode=enabled;vertexIndex=index;refreshGizmo();},setControl(c:Control,active:boolean){if(!run)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewing=time!==null;sync(project);if(time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
  const state=begin(project);const player=project.entities.find(e=>e.role==='player')!;
- previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length,elapsed:0};refreshGizmo();
+ previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length,elapsed:0};canvas.focus({preventScroll:true});refreshGizmo();
  },stop(project:Project){run=null;previewing=false;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
- dispose(){disposed=true;run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();marker?.dispose(false,true);shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
+ dispose(){disposed=true;run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();marker?.dispose(false,true);shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);canvas.removeEventListener('blur',clearKeys);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
 }

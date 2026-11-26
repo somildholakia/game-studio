@@ -15,5 +15,6 @@ try{
  next.addEventListener('click',()=>{if(next.hidden||index>=levels.length-1)return;index++;play();});
  const controls=document.querySelector<HTMLElement>('#touch-controls');const unbind=controls?bindTouchControls(controls,(c,a)=>viewport.setControl(c,a)):()=>{};
  window.addEventListener('pointerdown',viewport.unlockAudio,{once:true});restart.addEventListener('click',play);play();
- window.addEventListener('pagehide',()=>{unbind();viewport.dispose();},{once:true});
+ const onPageHide=(event:PageTransitionEvent)=>{if(event.persisted)return;unbind();viewport.dispose();window.removeEventListener('pagehide',onPageHide);};
+ window.addEventListener('pagehide',onPageHide);
 }catch(error){hud.textContent=String(error);restart.disabled=true;}

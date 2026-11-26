@@ -11,13 +11,19 @@ test('author, save, play and export a browser game',async({page},testInfo)=>{
  await expect(page.locator('header')).toContainText('Treasure Run');
  await page.getByRole('button',{name:'▶ Play',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('Collectibles 0 / 2');
+ await expect(page.locator('canvas')).toBeFocused();
  await page.keyboard.down('w');await page.waitForTimeout(250);await page.keyboard.up('w');
- await page.getByRole('button',{name:'■ Stop',exact:true}).click();
+ await page.getByRole('button',{name:'■ Stop',exact:true}).focus();
+ await page.keyboard.press('Space');
  await expect(page.getByRole('button',{name:'▶ Play',exact:true})).toBeVisible();
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();
  const file=await download;const path=testInfo.outputPath('game.html');await copyFile((await file.path())!,path);
  await page.goto(pathToFileURL(path).href);
  await expect(page.locator('#hud')).toContainText('Collectibles 0 / 2',{timeout:30000});
+ await expect(page.locator('#game')).toBeFocused();
+ await page.getByRole('button',{name:'Restart',exact:true}).focus();
+ await page.keyboard.press('Space');
+ await expect(page.locator('#game')).toBeFocused();
  expect(errors).toEqual([]);
 });
 test('configure a gameplay rule and see it in play mode',async({page})=>{
