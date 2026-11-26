@@ -16,3 +16,28 @@ it('filters object-specific rules while preserving general rules and order',()=>
  expect(logic.rules[1].sourceId).toBe('ruby');
  expect(()=>readLogic({autoWin:false,rules:[{...logic.rules[1],event:'start'}]})).toThrow();
 });
+
+it('supports scheduled and repeating timed rules in declaration order',()=>{
+ const logic=readLogic({autoWin:false,rules:[
+  {id:'delay',event:'second',minScore:0,timing:{start:2,repeat:0},action:{kind:'score',amount:10}},
+  {id:'loop',event:'second',minScore:10,timing:{start:2,repeat:3},action:{kind:'score',amount:1}},
+  {id:'legacy',event:'second',minScore:0,action:{kind:'score',amount:1}}
+ ]});
+ let s={score:0,message:'',won:false};for(let n=1;n<=8;n++)s=trigger(logic,s,'second',undefined,n);
+ expect(s.score).toBe(21);
+});
+it('consumes once-only rules only after their conditions pass and never mutates the prior state',()=>{
+ const logic=readLogic({autoWin:false,rules:[{id:'one',event:'collect',minScore:1,once:true,action:{kind:'score',amount:10}}]});
+ const initial={score:0,message:'',won:false};
+ expect(trigger(logic,initial,'collect')).toEqual(initial);
+ const ready={...initial,score:1};const first=trigger(logic,ready,'collect');
+ expect(first.score).toBe(11);expect(trigger(logic,first,'collect').score).toBe(11);
+ expect(first.firedRules?.has('one')).toBe(true);expect(ready).not.toHaveProperty('firedRules');
+ expect(trigger(logic,ready,'collect').score).toBe(11);
+});
+it('rejects out-of-range and non-second timing and invalid one-shot flags',()=>{
+ const rule={id:'r',event:'second',minScore:0,action:{kind:'win'}};
+ for(const patch of [{timing:{start:0,repeat:1}},{timing:{start:1.5,repeat:1}},{timing:{start:1,repeat:-1}},{timing:{start:3601,repeat:0}},{timing:{start:1,repeat:3601}},{event:'start',timing:{start:1,repeat:0}},{once:'yes'}]){
+  expect(()=>readLogic({autoWin:false,rules:[{...rule,...patch}]})).toThrow();
+ }
+});

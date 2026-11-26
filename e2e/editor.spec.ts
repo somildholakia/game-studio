@@ -331,3 +331,22 @@ test('duplicate a level with independent objects and undo the duplication',async
  await page.getByRole('button',{name:'Undo',exact:true}).click();
  await expect(levels.getByText('3. Level 1 copy copy (editing)',{exact:true})).toHaveCount(0);
 });
+
+test('author, duplicate, reorder and play a timed no-code rule',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();
+ await page.getByRole('button',{name:'+ Add event rule'}).click();
+ const first=page.getByRole('group',{name:'Rule 1',exact:true});
+ await first.getByLabel('When').selectOption('second');
+ await first.getByLabel('Custom event timing').check();
+ await first.getByLabel('First second').fill('1');
+ await first.getByLabel('Do').selectOption('message');
+ await first.getByLabel('Message',{exact:true}).fill('Timed message');
+ await first.getByRole('button',{name:'Duplicate rule',exact:true}).click();
+ const second=page.getByRole('group',{name:'Rule 2',exact:true});
+ await second.getByLabel('Message',{exact:true}).fill('Second timed message');
+ await second.getByRole('button',{name:'Move up',exact:true}).click();
+ await expect(first.getByLabel('Message',{exact:true})).toHaveValue('Second timed message');
+ await expect(second.getByLabel('Message',{exact:true})).toHaveValue('Timed message');
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Timed message',{timeout:20000});
+});

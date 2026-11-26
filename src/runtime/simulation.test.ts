@@ -74,3 +74,22 @@ it('dispatches a second goal entry even if its bounds overlap the first goal',()
  let s=begin(p);for(let i=0;i<28;i++)s=step(p,s,{x:1,z:0},.05);expect(s.logic.score).toBe(11);
  for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(11);
 });
+
+it('dispatches timed rules on simulated second boundaries and stops at win',()=>{
+ const p=world();p.logic={autoWin:false,rules:[
+  {id:'tick',event:'second',minScore:0,timing:{start:1,repeat:1},action:{kind:'score',amount:1}},
+  {id:'once',event:'second',minScore:0,once:true,action:{kind:'score',amount:10}},
+  {id:'end',event:'second',minScore:0,timing:{start:3,repeat:0},action:{kind:'win'}}
+ ]};
+ let s=begin(p);for(let i=0;i<19;i++)s=step(p,s,{x:0,z:0},.05);
+ expect(s.logic.score).toBe(0);s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(11);
+ for(let i=0;i<40;i++)s=step(p,s,{x:0,z:0},.05);
+ expect(s.won).toBe(true);expect(s.logic.score).toBe(13);expect(step(p,s,{x:0,z:0},.1)).toBe(s);
+});
+it('resets once-only rules on respawn while keeping the level clock',()=>{
+ const p=world();p.logic={autoWin:false,rules:[{id:'one',event:'second',once:true,minScore:0,action:{kind:'score',amount:1}}]};
+ let s=begin(p);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);
+ expect(s.logic.score).toBe(1);s=step(p,{...s,position:[0,-1000,0]},{x:0,z:0},.05);
+ expect(s.respawns).toBe(1);expect(s.logic.score).toBe(0);expect(s.elapsed).toBeGreaterThan(1);
+ for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(1);
+});
