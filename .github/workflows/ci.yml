@@ -14,6 +14,12 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
+      - name: Capture generated dependency lockfile
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: |
+          if ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            node --input-type=module -e "import fs from 'node:fs'; const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); for(const p of Object.values(lock.packages??{})){if(p.resolved){const u=new URL(p.resolved);if(u.protocol!=='https:'||u.hostname!=='registry.npmjs.org'||u.username||u.password||u.search||u.hash)throw Error('Unexpected registry URL');}} const b=Buffer.from(JSON.stringify(lock,null,2)+'\n').toString('base64'); for(let i=0;i<b.length;i+=2048) console.log('GS_LOCK_CHUNK:'+b.slice(i,i+2048));"
+          fi
       - run: npm test
       - run: npm run build
 
