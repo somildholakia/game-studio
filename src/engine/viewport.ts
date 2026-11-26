@@ -43,7 +43,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  for(const [id,m] of meshes)if(!ids.has(id)){meshes.delete(id);destroy(m);}
  for(const e of project.entities){let entry=meshes.get(e.id);
  const asset=e.kind==='model'?project.assets?.find(a=>a.id===e.assetId):undefined;
- const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain,e.rig?.hairStyle]);
+ const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain,e.rig?.hairStyle,e.uvProjection]);
  if(entry&&(entry.signature!==signature||entry.assetData!==asset?.data)){meshes.delete(e.id);destroy(entry);entry=undefined;}
  if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model'&&e.kind!=='character')m.material=createMaterial(e,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
  if(asset){const current=entry;const valid=()=>!disposed&&meshes.get(e.id)===current;void loadModel(asset,scene,m,valid).then(container=>{if(container&&valid()){current.container=container;refreshShadows();}else if(container){container.removeAllFromScene();container.dispose();}}).catch(err=>{if(valid())onError('Model '+e.name+': '+String(err));});}}
