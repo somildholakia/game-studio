@@ -10,14 +10,15 @@ import {readRig,type CharacterRig} from './characterRig';
 import {MAIN_SCENE,MAX_SCENES,type SceneData} from './scenes';
 import {readPresentation,type Presentation} from './presentation';
 import {readGraphics,type GraphicsSettings} from './graphics';
+import {readBody,MAX_BODIES,type BodySettings} from '../runtime/bodies';
 import type {Prefab} from './prefabs';
 export type Vec3=[number,number,number];
-export const roles=['decoration','player','solid','collectible','goal','hazard','checkpoint'] as const;
+export const roles=['decoration','player','solid','collectible','goal','hazard','checkpoint','dynamic'] as const;
 export type Role=typeof roles[number];
 export const kinds=['box','sphere','ground','cylinder','cone','torus','character','model','mesh','terrain'] as const;
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
 export type MaterialStyle={metallic:number;roughness:number;emissive:string};
-export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string};
+export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string;body?:BodySettings};
 export type Project={version:1;name:string;entities:Entity[];assets?:ModelAsset[];prefabs?:Prefab[];physics?:PhysicsSettings;logic?:Logic;audio?:AudioSettings;environment?:Environment;sceneId?:string;sceneName?:string;levels?:SceneData[];sceneOrder?:string[];presentation?:Presentation;graphics?:GraphicsSettings};
 export function entity(kind:Entity['kind']):Entity {
  return {id:crypto.randomUUID(),name:kind,kind,position:[0,kind==='ground'||kind==='terrain'?0:1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'decoration',...(kind==='terrain'?{terrain:{...defaultTerrain},color:'#527c50'}:{}),...(kind==='mesh'?{mesh:cubeMesh()}:{}),...(kind==='character'?{character:{bodyWidth:1,headSize:1,limbLength:1}}:{})};
@@ -40,6 +41,7 @@ export function parseProject(raw:string):Project {
  const result:Entity={id:e.id,name:e.name,kind:e.kind,position:e.position,rotation:e.rotation,scale:e.scale,color:e.color,role:e.role??'decoration'};
  if(e.prefabId!==undefined){if(typeof e.prefabId!=='string'||!e.prefabId||e.prefabId.length>200)throw Error('Invalid prefab reference');result.prefabId=e.prefabId;}
  if(e.kind==='model')result.assetId=e.assetId;
+ if(e.role==='dynamic'){if(!['box','sphere','cylinder','cone','torus'].includes(e.kind))throw Error('Unsupported dynamic body geometry');result.body=readBody(e.body);}
  if(e.animation!==undefined)result.animation=readClip(e.animation);
  if(e.kind==='mesh')result.mesh=readMesh(e.mesh);
  if(e.kind==='terrain'){if(!validTerrainTransform(result))throw Error('Terrain must be axis-aligned with positive bounded scale');result.terrain=readTerrain(e.terrain);delete result.animation;}
@@ -48,7 +50,7 @@ export function parseProject(raw:string):Project {
  return result;
  }
  let total=0;
- function readEntities(raw:unknown):Entity[]{if(!Array.isArray(raw)||raw.length>10000||(total+=raw.length)>20000)throw Error('Level entity limit exceeded');const ids=new Set<string>();let players=0;return raw.map((item:unknown)=>{const e=readEntity(item);if(ids.has(e.id))throw Error('Duplicate entity ID');ids.add(e.id);if(e.role==='player'&&++players>1)throw Error('Only one player is allowed per level');return e;});}
+ function readEntities(raw:unknown):Entity[]{if(!Array.isArray(raw)||raw.length>10000||(total+=raw.length)>20000)throw Error('Level entity limit exceeded');const ids=new Set<string>();let players=0,bodies=0;return raw.map((item:unknown)=>{const e=readEntity(item);if(ids.has(e.id))throw Error('Duplicate entity ID');ids.add(e.id);if(e.role==='player'&&++players>1)throw Error('Only one player is allowed per level');if(e.role==='dynamic'&&++bodies>MAX_BODIES)throw Error('Maximum 64 dynamic bodies per level');return e;});}
  const entities=readEntities(p.entities);
  const validId=(id:unknown):id is string=>typeof id==='string'&&id.length>0&&id.length<=200;
  const sceneId=p.sceneId??MAIN_SCENE,sceneName=p.sceneName??'Level 1';if(!validId(sceneId)||typeof sceneName!=='string'||!sceneName.trim()||sceneName.length>200)throw Error('Invalid active level');
