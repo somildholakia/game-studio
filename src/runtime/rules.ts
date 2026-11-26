@@ -1,4 +1,4 @@
-export const events=['start','collect','goal','respawn','checkpoint'] as const;
+export const events=['start','collect','goal','respawn','checkpoint','jump','second'] as const;
 export type EventKind=typeof events[number];
 export type Action={kind:'score';amount:number}|{kind:'message';text:string}|{kind:'win'};
 export type Rule={id:string;event:EventKind;minScore:number;action:Action};
