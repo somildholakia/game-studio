@@ -8,7 +8,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
  new HemisphericLight('light',new Vector3(0,1,0),scene);
- type Entry={mesh:Mesh;signature:string;container?:AssetContainer};
+ type Entry={mesh:Mesh;signature:string;assetData?:string;container?:AssetContainer};
  const meshes=new Map<string,Entry>();let disposed=false;
  function destroy(entry:Entry){entry.container?.removeAllFromScene();entry.container?.dispose();entry.mesh.dispose(false,true);}
  const keys=new Set<string>();
@@ -24,8 +24,8 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  for(const e of project.entities){let entry=meshes.get(e.id);
  const asset=e.kind==='model'?project.assets?.find(a=>a.id===e.assetId):undefined;
  const signature=JSON.stringify([e.kind,e.character,e.assetId]);
- if(entry&&entry.signature!==signature){meshes.delete(e.id);destroy(entry);entry=undefined;}
- if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model')m.material=new StandardMaterial(e.id,scene);entry={mesh:m,signature};meshes.set(e.id,entry);
+ if(entry&&(entry.signature!==signature||entry.assetData!==asset?.data)){meshes.delete(e.id);destroy(entry);entry=undefined;}
+ if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model')m.material=new StandardMaterial(e.id,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
  if(asset){const current=entry;const valid=()=>!disposed&&meshes.get(e.id)===current;void loadModel(asset,scene,m,valid).then(container=>{if(container&&valid())current.container=container;else if(container){container.removeAllFromScene();container.dispose();}}).catch(err=>{if(valid())onError('Model '+e.name+': '+String(err));});}}
  const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotation.set(...e.rotation);m.scaling.set(...e.scale);if(m.material instanceof StandardMaterial)m.material.diffuseColor=Color3.FromHexString(e.color);}
  }
