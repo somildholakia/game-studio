@@ -27,3 +27,14 @@ test('configure a gameplay rule and see it in play mode',async({page})=>{
  await rule.getByLabel('Do').selectOption('message');await rule.getByLabel('Message',{exact:true}).fill('Ready to explore');
  await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.getByRole('status')).toContainText('Ready to explore');
 });
+
+test('edit topology and capture animation poses',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ await expect(page.getByText('8 vertices · 12 triangles')).toBeVisible();
+ await page.getByRole('button',{name:'Subdivide triangle'}).click();await expect(page.getByText('9 vertices · 14 triangles')).toBeVisible();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByText('8 vertices · 12 triangles')).toBeVisible();
+ await page.getByRole('button',{name:'Create animation at 0s'}).click();
+ await page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true}).fill('2');
+ await page.getByRole('button',{name:'Capture pose'}).click();await expect(page.getByText('1.00s',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview pose'}).click();await expect(page.getByRole('button',{name:'Stop preview'})).toBeVisible();
+});
