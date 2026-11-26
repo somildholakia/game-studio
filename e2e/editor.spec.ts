@@ -339,6 +339,7 @@ test('author, duplicate, reorder and play a timed no-code rule',async({page})=>{
  await first.getByLabel('When').selectOption('second');
  await first.getByLabel('Custom event timing').check();
  await first.getByLabel('First second').fill('1');
+ await page.getByLabel('Show level timer').check();
  await first.getByLabel('Do').selectOption('message');
  await first.getByLabel('Message',{exact:true}).fill('Timed message');
  await first.getByRole('button',{name:'Duplicate rule',exact:true}).click();
@@ -349,4 +350,5 @@ test('author, duplicate, reorder and play a timed no-code rule',async({page})=>{
  await expect(second.getByLabel('Message',{exact:true})).toHaveValue('Timed message');
  await page.getByRole('button',{name:'▶ Play',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('Timed message',{timeout:20000});
+ await expect(page.getByRole('timer')).toHaveText(/Time: 0:0[1-9]/);
 });

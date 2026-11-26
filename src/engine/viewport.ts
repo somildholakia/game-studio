@@ -14,7 +14,7 @@ import {triggerBounds} from '../runtime/patrol';
 import {sample} from '../core/animation';
 import type {Project} from '../core/project';
 import {begin,advance,compileWorld,type GameState} from '../runtime/simulation';
-export type PlayStatus={collected:number;total:number;won:boolean;score:number;message:string;counters?:Record<string,number>};
+export type PlayStatus={collected:number;total:number;won:boolean;score:number;message:string;counters?:Record<string,number>;elapsedSeconds?:number};
 export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void,onMetrics?:(m:RenderMetrics)=>void,onVertexPick?:(index:number)=>void) {
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
@@ -30,7 +30,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  function destroy(entry:Entry){entry.container?.removeAllFromScene();entry.container?.dispose();entry.mesh.dispose(false,true);}
  const keys=new Set<string>();const touch=new Set<Control>();const audio=createAudio();
  const unlock=()=>{void audio.unlock().catch(()=>{});};
- let run:{project:Project;state:GameState;world:ReturnType<typeof compileWorld>;player:string;notify:(s:PlayStatus)=>void;last:string;total:number;elapsed:number}|null=null;
+ let run:{project:Project;state:GameState;world:ReturnType<typeof compileWorld>;player:string;notify:(s:PlayStatus)=>void;last:string;total:number}|null=null;
  const down=(e:KeyboardEvent)=>{if(run&&e.target===canvas&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())){e.preventDefault();keys.add(e.key.toLowerCase());}};
  const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
  const clear=()=>{keys.clear();touch.clear();};
@@ -58,13 +58,13 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const horizontal=Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft'));
  const vertical=Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown'));
  const input={x:horizontal||pad.x,z:vertical||pad.z,jump:touch.has('jump')||keys.has(' ')||pad.jump};
- const dt=engine.getDeltaTime()/1000;if(!run.state.won)run.elapsed+=Math.min(.1,Math.max(0,dt));const before=run.state;run.state=advance(run.world,run.state,input,dt);const sound=run.project.audio??defaultAudio;
- if(run.state.respawns>before.respawns)audio.play(sound,'respawn');else if(run.state.collected.size>before.collected.size)audio.play(sound,'collect');if(before.grounded&&run.state.velocityY>0)audio.play(sound,'jump');if(!before.won&&run.state.won)audio.play(sound,'win');applyAnimation(run.project,run.elapsed);
- const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.elapsed,moving,run.state.grounded);}}
+ const dt=engine.getDeltaTime()/1000;const before=run.state;run.state=advance(run.world,run.state,input,dt);const sound=run.project.audio??defaultAudio;
+ if(run.state.respawns>before.respawns)audio.play(sound,'respawn');else if(run.state.collected.size>before.collected.size)audio.play(sound,'collect');if(before.grounded&&run.state.velocityY>0)audio.play(sound,'jump');if(!before.won&&run.state.won)audio.play(sound,'win');applyAnimation(run.project,run.state.elapsed);
+ const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.state.elapsed,moving,run.state.grounded);}}
  for(const [id,body] of run.state.bodies)meshes.get(id)?.mesh.position.set(...body.position);
  camera.setTarget(new Vector3(...run.state.position));
  for(const item of [...run.world.pickups,...run.world.hazards]){const mesh=meshes.get(item.id)?.mesh;if(item.patrol)mesh?.position.set(...triggerBounds(item,run.state.elapsed).center);if(run.state.collected.has(item.id))mesh?.setEnabled(false);else mesh?.setEnabled(true);}
- const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message,counters:run.state.logic.counters};
+ const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message,counters:run.state.logic.counters,...(run.project.presentation?.showTimer?{elapsedSeconds:Math.floor(run.state.elapsed+1e-9)}:{})};
  const signature=JSON.stringify(status);if(signature!==run.last){run.last=signature;run.notify(status);}
  }
  if(marker){const point=!run&&!previewing&&vertexMode?vertexPoint(vertexIndex):null;marker.setEnabled(!!point);if(point){marker.position.copyFrom(point);marker.scaling.setAll(Math.max(.2,camera.radius/12));}}
@@ -73,7 +73,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const observer=new ResizeObserver(()=>engine.resize());observer.observe(canvas);
  return {sync,setVertexMode(enabled:boolean,index:number){vertexMode=enabled;vertexIndex=index;refreshGizmo();},setControl(c:Control,active:boolean){if(!run)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewing=time!==null;sync(project);if(time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
  const state=begin(project);const player=project.entities.find(e=>e.role==='player')!;
- previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length,elapsed:0};canvas.focus({preventScroll:true});refreshGizmo();
+ previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length};canvas.focus({preventScroll:true});refreshGizmo();
  },stop(project:Project){run=null;previewing=false;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
  dispose(){disposed=true;run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();marker?.dispose(false,true);shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);canvas.removeEventListener('blur',clearKeys);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
 }

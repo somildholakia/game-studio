@@ -19,14 +19,14 @@ describe('AI environment, audio and presentation commands',()=>{
    {op:'add-level',name:'Night'},
    {op:'environment',patch:{sky:'#101828',fogEnabled:true,fogDensity:.04}},
    {op:'audio',patch:{enabled:true,volume:.3,tones:{collect:{frequency:660}}}},
-   {op:'presentation',patch:{hudTitle:'Night adventure',showCounters:true}},
+   {op:'presentation',patch:{hudTitle:'Night adventure',showCounters:true,showTimer:true}},
    {op:'switch-level',id:'main'}
   ]));
   const [main,night]=orderedScenes(preview.next);
   expect(main.environment?.sky).not.toBe('#101828');expect(night.environment?.sky).toBe('#101828');
   expect(night.environment?.fogDensity).toBe(.04);expect(night.audio?.enabled).toBe(true);
   expect(night.audio?.tones.collect.frequency).toBe(660);expect(night.audio?.tones.collect.duration).toBe(.14);
-  expect(main.audio?.enabled).toBe(false);expect(preview.next.presentation?.hudTitle).toBe('Night adventure');
+  expect(main.audio?.enabled).toBe(false);expect(preview.next.presentation?.hudTitle).toBe('Night adventure');expect(preview.next.presentation?.showTimer).toBe(true);
   expect(preview.changes).toContain('[Night] Update environment');
   expect(preview.changes).toContain('[Night] Update game audio');expect(preview.changes).toContain('Update game presentation');
   expect(preview.details.some(s=>s.includes('#101828'))).toBe(true);expect(JSON.stringify(p)).toBe(before);
