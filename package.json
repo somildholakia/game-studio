@@ -4,8 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build:player": "vite build --config vite.player.config.ts",
+    "dev": "npm run build:player && vite",
+    "build": "npm run build:player && tsc --noEmit && vite build",
     "test": "vitest run"
   },
   "dependencies": {
