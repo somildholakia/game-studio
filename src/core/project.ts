@@ -31,7 +31,7 @@ export function parseProject(raw:string):Project {
  if(!p||p.version!==1||typeof p.name!=='string'||p.name.length>200||!Array.isArray(p.entities)||p.entities.length>10000)throw Error('Invalid project');
  const assets=validateAssets(p.assets),assetIds=new Set(assets.map(a=>a.id));
  function readEntity(e:any):Entity {
- if(!e||typeof e.id!=='string'||!e.id||e.id.length>200||typeof e.name!=='string'||e.name.length>200||!kinds.includes(e.kind)||!vec(e.position)||!vec(e.rotation)||!vec(e.scale)||typeof e.color!=='string'||!/^#[0-9a-f]{6}$/i.test(e.color)||(e.role!==undefined&&!roles.includes(e.role))||(['ground','model','mesh'].includes(e.kind)&&e.role&&e.role!=='decoration')||(e.kind==='model'&&!assetIds.has(e.assetId)))throw Error('Invalid entity');
+ if(!e||typeof e.id!=='string'||!e.id||e.id.length>200||typeof e.name!=='string'||e.name.length>200||!kinds.includes(e.kind)||!vec(e.position)||!vec(e.rotation)||!vec(e.scale)||typeof e.color!=='string'||!/^#[0-9a-f]{6}$/i.test(e.color)||(e.role!==undefined&&!roles.includes(e.role))||(['ground','model','mesh','terrain'].includes(e.kind)&&e.role&&e.role!=='decoration')||(e.kind==='model'&&!assetIds.has(e.assetId)))throw Error('Invalid entity');
  const result:Entity={id:e.id,name:e.name,kind:e.kind,position:e.position,rotation:e.rotation,scale:e.scale,color:e.color,role:e.role??'decoration'};
  if(e.kind==='model')result.assetId=e.assetId;
  if(e.animation!==undefined)result.animation=readClip(e.animation);
