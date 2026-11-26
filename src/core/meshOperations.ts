@@ -26,6 +26,27 @@ export function weldVertices(m:MeshData,tolerance:number):MeshData{
  for(const t of m.triangles){const f=t.map(i=>map[i]) as Face;if(new Set(f).size<3)continue;const key=[...f].sort((a,b)=>a-b).join(',');if(seen.has(key))continue;seen.add(key);triangles.push(f);}
  return readMesh({vertices,triangles});
 }
+/** Remove duplicate/zero-area faces and unreferenced vertices without changing the surviving surface. */
+export function cleanMesh(raw:MeshData):MeshData{
+ const mesh=readMesh(raw),seen=new Set<string>(),used=new Set<number>(),faces:Face[]=[];
+ for(const face of mesh.triangles){
+  const [a,b,c]=face.map(i=>mesh.vertices[i]);
+  if(Math.hypot(...cross(sub(b,a),sub(c,a)))<1e-9)continue;
+  const key=[...face].sort((x,y)=>x-y).join(',');
+  if(seen.has(key))continue;seen.add(key);faces.push(face);
+  for(const i of face)used.add(i);
+ }
+ if(!faces.length)throw Error('Cleanup would remove every triangle');
+ const vertices:Vec3[]=[],remap=new Map<number,number>();
+ mesh.vertices.forEach((v,i)=>{if(used.has(i)){remap.set(i,vertices.length);vertices.push(v);}});
+ const triangles=faces.map(face=>face.map(i=>remap.get(i)!) as Face);
+ return readMesh({vertices,triangles});
+}
+/** Flip all triangle winding while preserving vertex positions and indices. */
+export function reverseMesh(raw:MeshData):MeshData{
+ const mesh=readMesh(raw);
+ return readMesh({...mesh,triangles:mesh.triangles.map(([a,b,c])=>[a,c,b])});
+}
 export function meshToObj(m:MeshData):string{
  const mesh=readMesh(m);return ['# Game Studio mesh (right-handed OBJ)','o GameStudioMesh',...mesh.vertices.map(v=>'v '+[v[0],v[1],-v[2]].join(' ')),...mesh.triangles.map(t=>'f '+[t[0]+1,t[1]+1,t[2]+1].join(' '))].join('\n')+'\n';
 }

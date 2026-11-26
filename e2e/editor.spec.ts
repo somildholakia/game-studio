@@ -39,6 +39,10 @@ test('edit topology and capture animation poses',async({page})=>{
  const model=page.getByRole('group',{name:'Model Studio · Mesh topology',exact:true});const stats=model.getByTestId('mesh-topology-stats');await expect(stats).toContainText('8 vertices · 12 triangles');
  await model.getByRole('button',{name:'Subdivide triangle',exact:true}).click();await expect(stats).toContainText('9 vertices · 14 triangles');
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(stats).toContainText('8 vertices · 12 triangles');
+ await model.getByRole('button',{name:'Duplicate vertex',exact:true}).click();await expect(stats).toContainText('9 vertices · 12 triangles');
+ await model.getByRole('button',{name:'Clean mesh',exact:true}).click();await expect(stats).toContainText('8 vertices · 12 triangles');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(stats).toContainText('9 vertices · 12 triangles');
+ await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(stats).toContainText('8 vertices · 12 triangles');
  await page.getByRole('button',{name:'Create animation at 0s'}).click();
  await page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true}).fill('2');
  await page.getByRole('button',{name:'Capture pose'}).click();await expect(page.getByText('1.00s',{exact:true})).toBeVisible();

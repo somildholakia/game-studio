@@ -1,4 +1,4 @@
-import {describe,it,expect} from 'vitest';import {cubeMesh} from './mesh';import {extrudeFace,reverseFace,mirrorMesh,weldVertices,meshToObj,meshFromObj} from './meshOperations';
+import {describe,it,expect} from 'vitest';import {cubeMesh} from './mesh';import {extrudeFace,reverseFace,mirrorMesh,weldVertices,cleanMesh,reverseMesh,meshToObj,meshFromObj} from './meshOperations';
 describe('mesh operations',()=>{
  it('extrudes a triangle with a cap and six connecting faces',()=>{const m=cubeMesh(),n=extrudeFace(m,0,.5);expect(n.vertices).toHaveLength(11);expect(n.triangles).toHaveLength(18);expect(n.vertices[8][2]).toBeCloseTo(-1.25);expect(m.vertices).toHaveLength(8);});
  it('reflects geometry and reverses winding',()=>{const m=cubeMesh(),n=mirrorMesh(m,0);expect(n.vertices[0][0]).toBe(-m.vertices[0][0]);expect(n.triangles[0]).toEqual(reverseFace(m,0).triangles[0]);});
@@ -8,3 +8,15 @@ describe('mesh operations',()=>{
 
 it('round trips geometry through OBJ',()=>{const mesh=cubeMesh();expect(meshFromObj(meshToObj(mesh))).toEqual(mesh);});
 it('supports negative face indices and ignores external references without fetching',()=>{const m=meshFromObj('mtllib https://example.com/material.mtl\nv 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf -4 -3 -2 -1');expect(m.triangles).toEqual([[0,1,2],[0,2,3]]);expect(()=>meshFromObj('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 99')).toThrow();});
+
+it('cleans duplicates, zero-area triangles and unused vertices with stable remapping',()=>{
+ const m={vertices:[[9,9,9],[0,0,0],[1,0,0],[0,1,0],[2,0,0]] as import('./project').Vec3[],triangles:[[1,2,3],[1,3,2],[1,2,4]] as [number,number,number][]};
+ const result=cleanMesh(m);
+ expect(result).toEqual({vertices:[[0,0,0],[1,0,0],[0,1,0]],triangles:[[0,1,2]]});
+ expect(m.vertices).toHaveLength(5);expect(cleanMesh(result)).toEqual(result);
+ expect(()=>cleanMesh({...m,triangles:[[1,2,4]]})).toThrow('Cleanup would remove every triangle');
+});
+it('reverses all face winding and is an involution',()=>{
+ const m=cubeMesh(),r=reverseMesh(m);expect(r.vertices).toEqual(m.vertices);
+ expect(r.triangles[0]).toEqual([0,2,1]);expect(reverseMesh(r)).toEqual(m);
+});
