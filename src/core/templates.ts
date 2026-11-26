@@ -41,3 +41,11 @@ export function terrainTemplate():Project{
  placed('box','goal','Exit',at(0,7,.65),'#5be68a',[.8,.7,.8])
  ]};
 }
+
+export function adventureCampaign():Project{
+ const first=treasureTemplate(),second=terrainTemplate();const ground=second.entities[0],surface=compileTerrain(ground);
+ const at=(x:number,z:number,h:number):Vec3=>[x,(surface.height(x,z)??0)+h,z];
+ second.entities.push(placed('box','checkpoint','Checkpoint',at(0,-4,.15),'#55bffa',[.8,.2,.8]),placed('box','hazard','Hazard',at(0,0,.15),'#e25757',[1.5,.3,.8]));
+ second.logic={autoWin:true,rules:[{id:crypto.randomUUID(),event:'checkpoint',minScore:0,action:{kind:'message',text:'Checkpoint reached'}},{id:crypto.randomUUID(),event:'respawn',minScore:0,action:{kind:'message',text:'Try again'}}]};
+ const id=crypto.randomUUID();return {...first,name:'Adventure Campaign',sceneId:'main',sceneName:'Treasure Run',sceneOrder:['main',id],levels:[{id,name:'Meadow Explorer',entities:second.entities,environment:second.environment,logic:second.logic}]};
+}
