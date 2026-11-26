@@ -1,0 +1,6 @@
+import {describe,it,expect} from 'vitest';import {patrolPosition,readPatrol} from './patrol';import {entity,type Project} from '../core/project';import {begin,step} from './simulation';
+describe('moving triggers',()=>{
+ it('moves deterministically along a repeating path',()=>{const p={offset:[4,0,-2] as [number,number,number],period:4};expect(patrolPosition([0,1,0],p,1)).toEqual([2,1,-1]);expect(patrolPosition([0,1,0],p,2)).toEqual([4,1,-2]);expect(patrolPosition([0,1,0],p,4)).toEqual([0,1,0]);expect(()=>readPatrol({...p,period:0})).toThrow();});
+ it('collects a moving pickup using its current position',()=>{const p:Project={version:1,name:'Moving pickup',entities:[{...entity('box'),role:'player',position:[0,.75,0]},{...entity('sphere'),role:'collectible',position:[4,.75,0],patrol:{offset:[-4,0,0],period:2}}]};let s=begin(p);for(let i=0;i<30;i++)s=step(p,s,{x:0,z:0},.05);expect(s.collected.size).toBe(1);});
+ it('respawns when a moving hazard reaches the player',()=>{const p:Project={version:1,name:'Moving hazard',entities:[{...entity('box'),role:'player',position:[0,.75,0]},{...entity('box'),role:'hazard',position:[4,.75,0],patrol:{offset:[-4,0,0],period:2}}]};let s=begin(p);for(let i=0;i<30&&s.respawns===0;i++)s=step(p,s,{x:0,z:0},.05);expect(s.respawns).toBeGreaterThan(0);});
+});
