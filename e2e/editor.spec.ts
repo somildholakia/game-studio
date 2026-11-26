@@ -76,3 +76,44 @@ test('customize character appearance and preserve the rig on reload',async({page
  await expect(rig.getByLabel('Hair style')).toHaveValue('cap');
  await expect(rig.getByLabel('Automatic walk and jump poses')).not.toBeChecked();
 });
+
+test('create and reorder levels in the authoring workspace',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();
+ const levels=page.getByRole('group',{name:'Level Manager',exact:true});
+ await levels.getByLabel('Level name').fill('Forest');await levels.getByRole('button',{name:'Add level',exact:true}).click();
+ await expect(levels.getByText('2. Forest (editing)',{exact:true})).toBeVisible();
+ await levels.getByRole('button',{name:'Move level 2 up',exact:true}).click();
+ await expect(levels.getByText('1. Forest (editing)',{exact:true})).toBeVisible();
+ await levels.getByRole('button',{name:'Edit level 2',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Gem A collectible',exact:true})).toBeVisible();
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();
+ await expect(levels.getByText('1. Forest',{exact:true})).toBeVisible();
+});
+test('play and export an ordered multi-level campaign',async({page},testInfo)=>{
+ const player=(id:string)=>({id,name:'Player',kind:'box',position:[0,1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'player'});
+ const logic={autoWin:false,rules:[{id:'win',event:'start',minScore:0,action:{kind:'win'}}]};
+ const fixture={version:1,name:'Campaign test',sceneId:'a',sceneName:'First stage',sceneOrder:['a','b'],entities:[player('p1')],logic,levels:[{id:'b',name:'Second stage',entities:[player('p2')],logic}]};
+ await page.goto('/');await page.locator('header input[type=file]').setInputFiles({name:'campaign.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
+ await expect(page.locator('header')).toContainText('Campaign test');
+ await page.getByRole('button',{name:'Play campaign',exact:true}).click();
+ await expect(page.locator('.game-hud')).toContainText('First stage');
+ await page.getByRole('button',{name:'Next level',exact:true}).click();
+ await expect(page.locator('.game-hud')).toContainText('Game complete!');
+ await page.getByRole('button',{name:'■ Stop',exact:true}).click();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();
+ const file=await download;const path=testInfo.outputPath('campaign.html');await copyFile((await file.path())!,path);
+ await page.goto(pathToFileURL(path).href);
+ await expect(page.locator('#hud')).toContainText('First stage');
+ await page.getByRole('button',{name:'Next level',exact:true}).click();
+ await expect(page.locator('#hud')).toContainText('Second stage');
+ await expect(page.locator('#hud')).toContainText('Game complete!');
+});
+test('filter workspace and configure a custom HUD',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();
+ const navigation=page.getByRole('navigation',{name:'Workspace sections'});
+ await navigation.getByRole('button',{name:'Scene',exact:true}).click();await page.getByLabel('Find scene objects').fill('Gem A');
+ await expect(page.getByRole('button',{name:'Gem A collectible',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Gem B collectible',exact:true})).toHaveCount(0);
+ await page.getByRole('navigation',{name:'Inspector sections'}).getByRole('button',{name:'Gameplay',exact:true}).click();
+ const ui=page.getByRole('group',{name:'Game UI and camera',exact:true});await ui.getByLabel('HUD title').fill('Quest mode');await ui.getByLabel('Show score').uncheck();await ui.getByLabel('Camera mode').selectOption('overhead');
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.locator('.game-hud')).toContainText('Quest mode');await expect(page.locator('.game-hud')).not.toContainText('Score:');
+});
