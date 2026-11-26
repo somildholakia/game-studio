@@ -222,3 +222,20 @@ test('subdivide entire mesh, undo and redo shared topology',async({page})=>{
  await page.reload();await page.getByRole('button',{name:'mesh',exact:true}).click();
  await expect(stats).toContainText('26 vertices · 48 triangles');expect(errors).toEqual([]);
 });
+
+test('a stale editor tab cannot silently overwrite the active saved workspace',async({page,context})=>{
+ await page.goto('/');await expect(page.locator('footer')).toContainText('Saved on this device');
+ const other=await context.newPage();
+ try{
+  await other.goto('/');await expect(other.locator('footer')).toContainText('Saved on this device');
+  await page.getByRole('button',{name:'+ cylinder',exact:true}).click();
+  await expect(page.locator('footer')).toContainText('Saved on this device');
+  await other.getByRole('button',{name:'+ sphere',exact:true}).click();
+  await expect(other.locator('footer')).toContainText('Autosave disabled');
+  await expect(other.getByRole('alert')).toContainText('Another Game Studio tab');
+  await expect(other.getByRole('button',{name:'sphere',exact:true})).toBeVisible();
+  await other.reload();
+  await expect(other.getByRole('button',{name:'cylinder',exact:true})).toBeVisible();
+  await expect(other.getByRole('button',{name:'sphere',exact:true})).toHaveCount(0);
+ }finally{await other.close();}
+});
