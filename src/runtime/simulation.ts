@@ -1,6 +1,7 @@
 import type {Project,Vec3} from '../core/project';
 import {bounds,overlaps,moveAxis,type Bounds} from './collision';
 import {defaultLogic,trigger,type LogicState} from './rules';
+import {compileTerrain} from '../core/terrain';
 import {defaults} from './physicsSettings';
 export type Input={x:number;z:number;jump?:boolean};
 export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;jumpHeld:boolean;respawns:number;logic:LogicState;insideGoal:boolean};
@@ -14,23 +15,31 @@ export function compileWorld(project:Project){
  const spawn=project.entities.find(e=>e.role==='player');if(!spawn)throw Error('Add a player spawn before playing.');
  const half=bounds(spawn).half.map(n=>Math.max(.05,n)) as Vec3;
  const solids=project.entities.filter(e=>e.role==='solid'&&e.kind!=='ground'&&e.kind!=='model').map(bounds);
+ const terrains=project.entities.filter(e=>e.kind==='terrain').map(compileTerrain);
  const floors=project.entities.filter(e=>e.kind==='ground').map(bounds);
  // Preserve legacy worlds without an explicit ground; use an implicit horizontal plane.
- if(!floors.length)floors.push({center:[0,0,0],half:[Infinity,0,Infinity]});
+ if(!floors.length&&!terrains.length)floors.push({center:[0,0,0],half:[Infinity,0,Infinity]});
  const pickups=project.entities.filter(e=>e.role==='collectible').map(e=>({id:e.id,bounds:bounds(e)}));
  const goals=project.entities.filter(e=>e.role==='goal').map(bounds);
- return {spawn:spawn.position,half,solids,floors,pickups,goals,settings:project.physics??defaults,logic:project.logic??defaultLogic};
+ return {spawn:spawn.position,half,solids,floors,terrains,pickups,goals,settings:project.physics??defaults,logic:project.logic??defaultLogic};
 }
 type World=ReturnType<typeof compileWorld>;
 function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolean):GameState{
- const {half,solids,floors,settings}=world;const p:Vec3=[...state.position];
+ const {half,solids,floors,terrains,settings}=world;const p:Vec3=[...state.position];
  const length=Math.max(1,Math.hypot(input.x,input.z));const speed=settings.moveSpeed*dt/length;
  p[0]=moveAxis(p,half,0,input.x*speed,solids).position;
  p[2]=moveAxis(p,half,2,input.z*speed,solids).position;
+ // Follow the terrain surface only when already grounded on it, or crossing it from above.
+ const oldSurface=terrains.map(t=>t.height(state.position[0],state.position[2])).filter((h):h is number=>h!==null).reduce((a,b)=>Math.max(a,b),-Infinity);
+ const newSurface=terrains.map(t=>t.height(p[0],p[2])).filter((h):h is number=>h!==null).reduce((a,b)=>Math.max(a,b),-Infinity);
+ const follows=state.grounded&&Math.abs(state.position[1]-half[1]-oldSurface)<.02&&Number.isFinite(newSurface)&&Math.abs(newSurface-oldSurface)<.5;
+ if(follows&&!jump&&newSurface>oldSurface){const rise=moveAxis(p,half,1,newSurface-oldSurface,solids);if(rise.hit){p[0]=state.position[0];p[2]=state.position[2];}else p[1]=rise.position;}
  let vy=jump&&state.grounded?settings.jumpSpeed:state.velocityY;
  vy-=settings.gravity*dt;
  const vertical=moveAxis(p,half,1,vy*dt,solids);let nextY=vertical.position;let landed=vertical.hit&&vy<0;
  if(vy<=0)for(const floor of floors){const top=floor.center[1]+floor.half[1]+half[1];if(overlaps(p,half,floor,[0,2])&&p[1]>=top-1e-6&&nextY<=top){nextY=Math.max(nextY,top);landed=true;}}
+ const surface=terrains.map(t=>t.height(p[0],p[2])).filter((h):h is number=>h!==null).reduce((a,b)=>Math.max(a,b),-Infinity);
+ if(vy<=0&&Number.isFinite(surface)){const top=surface+half[1];if((p[1]>=top-1e-6&&nextY<=top)||(follows&&!jump&&p[0]===state.position[0]&&p[2]===state.position[2]&&Math.abs(p[1]-top)<.02)||(follows&&!jump&&Math.abs(p[1]-top)<.5&&nextY<=p[1])){const contact=moveAxis(p,half,1,top-p[1],solids);if(!contact.hit){nextY=Math.max(nextY,top);if(follows&&!jump&&top<p[1]&&!vertical.hit&&!landed)nextY=top;landed=true;}}}
  p[1]=nextY;if(vertical.hit||landed)vy=0;
  if(p[1]<settings.fallLimit){const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...world.spawn],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,logic,won:logic.won,insideGoal:false};}
  const collected=new Set(state.collected);let logic=state.logic;
