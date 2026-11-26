@@ -50,7 +50,7 @@ export async function listProjects():Promise<SavedProject[]>{
  tx.oncomplete=()=>resolve(entries.sort((a,b)=>b.updatedAt-a.updatedAt));tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
  });}finally{db.close();}
 }
-export async function saveProjectCopy(project:Project,name:string,id=crypto.randomUUID()):Promise<SavedProject>{
+export async function saveProjectCopy(project:Project,name:string,id:string=crypto.randomUUID()):Promise<SavedProject>{
  const title=name.trim();if(!title||title.length>200)throw Error('Enter a project name up to 200 characters.');
  const validated=parseProject(JSON.stringify({...project,name:title}));
  const entry:Entry={id,name:title,updatedAt:Date.now(),project:validated};
