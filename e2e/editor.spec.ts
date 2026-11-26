@@ -154,3 +154,15 @@ test('update and detach linked prefab appearances',async({page})=>{
  await prefabs.getByRole('button',{name:'Detach selected instance',exact:true}).click();
  await expect(prefabs.getByText('box · 0 linked',{exact:true})).toBeVisible();
 });
+
+test('configure dynamic body and moving trigger, then play and restore scene',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
+ await page.getByRole('button',{name:'Load Physics Playground',exact:true}).click();
+ await page.getByRole('button',{name:'Pushable crate dynamic',exact:true}).click();
+ const body=page.getByRole('group',{name:'Dynamic body',exact:true});await body.getByLabel('Mass',{exact:true}).fill('2');await expect(body.getByLabel('Mass',{exact:true})).toHaveValue('2');
+ await page.getByRole('button',{name:'Moving obstacle hazard',exact:true}).click();
+ const patrol=page.getByRole('group',{name:'Moving gameplay object',exact:true});await patrol.getByLabel('Round trip (seconds)').fill('8');
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.locator('.game-hud')).toContainText('Collectibles 0 / 1');
+ await page.getByRole('button',{name:'■ Stop',exact:true}).click();await expect(patrol.getByLabel('Round trip (seconds)')).toHaveValue('8');
+ await expect(page.locator('footer')).toContainText('Saved on this device');expect(errors).toEqual([]);
+});
