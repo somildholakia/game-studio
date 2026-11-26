@@ -132,3 +132,25 @@ test('adjust graphics quality and see renderer diagnostics',async({page})=>{
  await expect(page.locator('footer')).toContainText('Saved on this device');
  expect(errors).toEqual([]);
 });
+
+test('extrude a mesh and undo the edit',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const model=page.getByRole('group',{name:'Model Studio · Mesh topology',exact:true});
+ await model.getByRole('button',{name:'Extrude triangle',exact:true}).click();
+ await expect(model.getByTestId('mesh-topology-stats')).toContainText('11 vertices · 18 triangles');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(model.getByTestId('mesh-topology-stats')).toContainText('8 vertices · 12 triangles');
+ await model.getByRole('button',{name:'Pick vertex in viewport',exact:true}).click();
+ await expect(model.getByRole('button',{name:'Exit vertex picking',exact:true})).toBeVisible();
+ await model.getByRole('button',{name:'Exit vertex picking',exact:true}).click();
+});
+test('update and detach linked prefab appearances',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'box',exact:true}).click();
+ const prefabs=page.getByRole('group',{name:'Reusable prefabs',exact:true});
+ await prefabs.getByRole('button',{name:'Save selected as prefab'}).click();
+ await prefabs.getByRole('button',{name:'Place linked',exact:true}).click();
+ await expect(prefabs.getByText('box · 1 linked',{exact:true})).toBeVisible();
+ page.once('dialog',d=>d.accept());await prefabs.getByRole('button',{name:'Update from selected',exact:true}).click();
+ await prefabs.getByRole('button',{name:'Detach selected instance',exact:true}).click();
+ await expect(prefabs.getByText('box · 0 linked',{exact:true})).toBeVisible();
+});
