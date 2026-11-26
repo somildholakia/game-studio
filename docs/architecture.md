@@ -1,7 +1,7 @@
 # Architecture and release gates
 
 ## Product
-Manual-first browser authoring with beginner and expert workflows. Benchmark Unreal, Unity, Blender, PlayCanvas, GDevelop, Spline and Rosebud. Current foundation is a primitive scene editor, not a game runtime.
+Manual-first browser authoring with beginner and expert workflows. Benchmark Unreal, Unity, Blender, PlayCanvas, GDevelop, Spline and Rosebud. Current implementation is an experimental scene editor with a separate browser game runtime, multi-level export and bounded authoring tools. The modules and milestones below describe the target architecture; not all capabilities are implemented.
 
 ## Modules
 - Core: versioned scene schema, command history, migrations and stable IDs.
