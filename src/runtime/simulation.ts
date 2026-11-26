@@ -43,7 +43,8 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  const follows=wasOnTerrain&&!jump&&Number.isFinite(surface)&&Math.abs(surface-oldSurface)<=.5;
  // Prevent walking into a high terrain side, or climbing through a solid ceiling.
  if(surface+half[1]>p[1]+1e-6){const rise=surface+half[1]-p[1];if(!follows||moveAxis(p,half,1,rise,solids).hit){p[0]=state.position[0];p[2]=state.position[2];surface=oldSurface;}else p[1]+=rise;}
- let vy=jump&&state.grounded?settings.jumpSpeed:state.velocityY;
+ const jumped=jump&&state.grounded;
+ let vy=jumped?settings.jumpSpeed:state.velocityY;
  vy-=settings.gravity*dt;
  const vertical=moveAxis(p,half,1,vy*dt,solids);let nextY=vertical.position;let landed=vertical.hit&&vy<0;
  if(vy<=0)for(const floor of floors){const top=floor.center[1]+floor.half[1]+half[1];if(overlaps(p,half,floor,[0,2])&&p[1]>=top-1e-6&&nextY<=top){nextY=Math.max(nextY,top);landed=true;}}
@@ -51,7 +52,7 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  if(crossing||downhill){const contact=moveAxis(p,half,1,top-p[1],solids);if(!contact.hit&&(!landed||top>=nextY)){nextY=top;landed=true;}}}
  p[1]=nextY;if(vertical.hit||landed)vy=0;
  if(p[1]<settings.fallLimit||world.hazards.some(b=>overlaps(p,half,triggerBounds(b,elapsed)))){const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false};}
- const collected=new Set(state.collected);let logic=state.logic;let checkpointId=state.checkpointId;let respawnPosition=state.respawnPosition;
+ const collected=new Set(state.collected);let logic=state.logic;if(jumped)logic=trigger(world.logic,logic,'jump');if(Math.floor(elapsed+1e-9)>Math.floor(state.elapsed+1e-9))logic=trigger(world.logic,logic,'second');let checkpointId=state.checkpointId;let respawnPosition=state.respawnPosition;
  const checkpoint=world.checkpoints.find(c=>overlaps(p,half,c.bounds));if(checkpoint&&checkpoint.id!==checkpointId){checkpointId=checkpoint.id;respawnPosition=[checkpoint.bounds.center[0],checkpoint.bounds.center[1]+checkpoint.bounds.half[1]+half[1]+.05,checkpoint.bounds.center[2]];logic=trigger(world.logic,logic,'checkpoint');}
  for(const item of world.pickups)if(!collected.has(item.id)&&overlaps(p,half,triggerBounds(item,elapsed))){collected.add(item.id);logic=trigger(world.logic,logic,'collect');}
  const insideGoal=world.goals.some(b=>overlaps(p,half,b));if(insideGoal&&!state.insideGoal)logic=trigger(world.logic,logic,'goal');
