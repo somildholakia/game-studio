@@ -117,3 +117,18 @@ test('filter workspace and configure a custom HUD',async({page})=>{
  const ui=page.getByRole('group',{name:'Game UI and camera',exact:true});await ui.getByLabel('HUD title').fill('Quest mode');await ui.getByLabel('Show score').uncheck();await ui.getByLabel('Camera mode').selectOption('overhead');
  await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.locator('.game-hud')).toContainText('Quest mode');await expect(page.locator('.game-hud')).not.toContainText('Score:');
 });
+
+test('adjust graphics quality and see renderer diagnostics',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();
+ await page.getByRole('navigation',{name:'Inspector sections'}).getByRole('button',{name:'World',exact:true}).click();
+ const graphics=page.getByRole('group',{name:'Graphics and performance',exact:true});
+ await expect(graphics.getByText('Frame rate',{exact:true})).toBeVisible({timeout:15000});
+ await graphics.getByRole('slider',{name:/Render resolution/}).fill('0.75');
+ await graphics.getByLabel('Enable directional shadows').check();
+ await graphics.getByLabel('Shadow resolution').selectOption('512');
+ await expect(graphics.getByLabel('Shadow resolution')).toHaveValue('512');
+ await graphics.getByLabel('Enable directional shadows').uncheck();
+ await expect(page.locator('footer')).toContainText('Saved on this device');
+ expect(errors).toEqual([]);
+});
