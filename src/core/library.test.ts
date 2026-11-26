@@ -1,0 +1,5 @@
+import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest';import {IDBFactory,IDBKeyRange} from 'fake-indexeddb';
+import {saveProjectCopy,openProjectCopy,deleteProjectCopy,listProjects,persist,restore} from './persistence';import {initialProject} from './project';
+beforeEach(()=>{vi.stubGlobal('indexedDB',new IDBFactory());vi.stubGlobal('IDBKeyRange',IDBKeyRange);vi.stubGlobal('localStorage',{getItem:()=>null});});
+afterEach(()=>vi.unstubAllGlobals());
+describe('named project library',()=>{it('stores independent copies and keeps active workspace separate',async()=>{const p=initialProject();await persist(p);const a=await saveProjectCopy(p,'Alpha'),b=await saveProjectCopy(p,'Beta');expect(a.id).not.toBe(b.id);expect(await listProjects()).toHaveLength(2);expect((await openProjectCopy(a.id)).name).toBe('Alpha');await saveProjectCopy({...p,entities:[]},'Alpha',a.id);expect((await openProjectCopy(a.id)).entities).toEqual([]);expect((await openProjectCopy(b.id)).entities).toHaveLength(p.entities.length);await deleteProjectCopy(a.id);expect(await listProjects()).toHaveLength(1);expect((await restore())?.name).toBe(p.name);});});
