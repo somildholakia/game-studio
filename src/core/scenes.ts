@@ -31,6 +31,6 @@ export function removeScene(p:Project,id:string):Project{
  return {...sceneProject(p,target),levels:remaining.filter(s=>s.id!==target.id),sceneOrder:remaining.map(s=>s.id)};
 }
 export function campaign(p:Project):Project[]{
- const scenes=orderedScenes(p);for(const s of scenes){if(!s.entities.some(e=>e.role==='player'))throw Error('Add a player to '+s.name);if(scenes.length>1&&!s.entities.some(e=>e.role==='goal')&&!s.logic?.rules.some(r=>r.action.kind==='win'))throw Error('Add a goal or win rule to '+s.name);}
+ const scenes=orderedScenes(p);for(const s of scenes){if(!s.entities.some(e=>e.role==='player'))throw Error('Add a player to '+s.name);if(scenes.length>1&&!((s.logic?.autoWin??true)&&s.entities.some(e=>e.role==='goal'))&&!s.logic?.rules.some(r=>r.action.kind==='win'))throw Error('Add a goal or win rule to '+s.name);}
  return scenes.map(s=>sceneProject(p,s));
 }
