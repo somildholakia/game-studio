@@ -5,3 +5,7 @@ describe('multi-level projects',()=>{
 });
 
 it('rejects missing or duplicate scene order entries and multiple players in an inactive level',()=>{const p=addScene(initialProject(),'Next');expect(()=>parseProject(JSON.stringify({...p,sceneOrder:['main','main']}))).toThrow();const first=p.levels![0];first.entities.push({...entity('box'),role:'player'},{...entity('box'),role:'player'});expect(()=>parseProject(JSON.stringify(p))).toThrow();});
+
+import {removeModel} from './prefabs';
+import {adventureCampaign} from './templates';
+it('retains inactive-level asset dependencies and exports the sample campaign in order',()=>{const p=addScene(initialProject(),'Next');p.levels![0].entities.push({...entity('model'),assetId:'shared'});expect(()=>removeModel(p,'shared')).toThrow();expect(campaign(parseProject(JSON.stringify(adventureCampaign()))).map(l=>l.sceneName)).toEqual(['Treasure Run','Meadow Explorer']);});
