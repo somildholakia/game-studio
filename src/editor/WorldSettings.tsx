@@ -1,3 +1,4 @@
+import {TexturePanel} from './TexturePanel';
 import {defaults,type PhysicsSettings} from '../runtime/physicsSettings';
 import type {Entity,MaterialStyle} from '../core/project';
 const fields:[keyof PhysicsSettings,string,number,number][]=[['gravity','Gravity',1,100],['moveSpeed','Movement speed',.1,30],['jumpSpeed','Jump speed',.1,30],['fallLimit','Respawn height',-10000,-1]];
