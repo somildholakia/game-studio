@@ -2,11 +2,11 @@ import {parseProject,type Project} from './project';
 const LEGACY='game-studio:project:v1';
 const DB='game-studio';const STORE='projects';const KEY='active';
 function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{
- const request=indexedDB.open(DB,1);
+ const request=indexedDB.open(DB,1);let blocked=false;
  request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE);};
  request.onerror=()=>reject(request.error??Error('Database unavailable'));
- request.onblocked=()=>reject(Error('Close other Game Studio tabs to upgrade storage.'));
- request.onsuccess=()=>resolve(request.result);
+ request.onblocked=()=>{blocked=true;reject(Error('Close other Game Studio tabs to upgrade storage.'));};
+ request.onsuccess=()=>{if(blocked){request.result.close();return;}request.result.onversionchange=()=>request.result.close();resolve(request.result);};
 });}
 async function read():Promise<unknown>{
  const db=await open();try{return await new Promise((resolve,reject)=>{
