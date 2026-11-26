@@ -1,4 +1,5 @@
 import {touchMarkup} from '../runtime/controls';
+import {campaign} from './scenes';
 import type {Project} from './project';
 import player from '../generated/player.js?raw';
 function base64(text:string):string {
@@ -7,10 +8,10 @@ function base64(text:string):string {
  return btoa(binary);
 }
 export function buildGameHtml(project:Project):string {
- if(!project.entities.some(e=>e.role==='player'))throw Error('Add a player before exporting a game.');
+ campaign(project);
  const json=JSON.stringify(project).replace(/</g,'\\u003c');
  const source=base64(player);
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Game Studio Game</title><style>body{margin:0;background:#101620;color:white;font:16px system-ui}canvas{display:block;width:100vw;height:100dvh;touch-action:none}aside{position:fixed;top:12px;left:12px;background:#1c2330;padding:12px;border-radius:8px}button{margin-top:8px;padding:8px}.touch-controls{position:fixed;bottom:16px;left:16px;right:16px;display:flex;gap:8px;justify-content:center;touch-action:none}.touch-controls button{min-width:42px;min-height:44px;background:#263b54;color:#fff;border:1px solid #7994b3;border-radius:8px;touch-action:none;user-select:none}.touch-controls button:active{background:#426d9a}</style></head><body><canvas id="game"></canvas><aside><div id="hud" role="status">Loading…</div><div>WASD / Arrow keys · Space to jump</div><button id="restart">Restart</button></aside><div id="touch-controls" class="touch-controls" aria-label="Game touch controls">${touchMarkup}</div><script id="project" type="application/json">${json}</script><script src="data:text/javascript;base64,${source}"></script></body></html>`;
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Game Studio Game</title><style>body{margin:0;background:#101620;color:white;font:16px system-ui}canvas{display:block;width:100vw;height:100dvh;touch-action:none}aside{position:fixed;top:12px;left:12px;background:#1c2330;padding:12px;border-radius:8px}button{margin-top:8px;padding:8px}.touch-controls{position:fixed;bottom:16px;left:16px;right:16px;display:flex;gap:8px;justify-content:center;touch-action:none}.touch-controls button{min-width:42px;min-height:44px;background:#263b54;color:#fff;border:1px solid #7994b3;border-radius:8px;touch-action:none;user-select:none}.touch-controls button:active{background:#426d9a}</style></head><body><canvas id="game"></canvas><aside><div id="hud" role="status">Loading…</div><div>WASD / Arrow keys · Space to jump</div><button id="restart">Restart</button><button id="next-level" hidden>Next level</button></aside><div id="touch-controls" class="touch-controls" aria-label="Game touch controls">${touchMarkup}</div><script id="project" type="application/json">${json}</script><script src="data:text/javascript;base64,${source}"></script></body></html>`;
 }
 export function downloadGame(project:Project):void {
  const url=URL.createObjectURL(new Blob([buildGameHtml(project)],{type:'text/html'}));
