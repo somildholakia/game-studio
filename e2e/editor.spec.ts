@@ -194,3 +194,15 @@ test('export a custom GLB and reuse it in the asset library',async({page},testIn
  const models=page.getByRole('group',{name:'3D models',exact:true});await expect(models.getByText('model.glb',{exact:true})).toBeVisible();
  await models.getByRole('button',{name:'Place',exact:true}).click();await expect(page.getByRole('button',{name:'model.glb',exact:true})).toBeVisible();
 });
+
+test('preview and undo a multi-level AI plan',async({page})=>{
+ await page.goto('/');
+ const ai=page.getByRole('group',{name:'AI Studio · Command preview',exact:true});
+ await ai.getByLabel('JSON edit plan').fill(JSON.stringify({version:1,summary:'Create a second level',commands:[{op:'add-level',name:'Forest'},{op:'add',kind:'box',patch:{name:'Forest exit',role:'goal'}}]}));
+ await ai.getByRole('button',{name:'Validate and preview'}).click();
+ await expect(ai.getByText('Add level: Forest',{exact:true})).toBeVisible();
+ await expect(ai.getByText('[Forest] Add: Forest exit (box)',{exact:true})).toBeVisible();
+ await ai.getByRole('button',{name:'Apply as one undoable edit'}).click();
+ await expect(page.getByRole('button',{name:'Forest exit goal',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Forest exit goal',exact:true})).toHaveCount(0);
+});
