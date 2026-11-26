@@ -4,12 +4,12 @@ import {defaultLogic,trigger,type LogicState} from './rules';
 import {compileTerrain} from '../core/terrain';
 import {defaults} from './physicsSettings';
 export type Input={x:number;z:number;jump?:boolean};
-export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;jumpHeld:boolean;respawns:number;logic:LogicState;insideGoal:boolean};
+export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;jumpHeld:boolean;respawns:number;logic:LogicState;insideGoal:boolean;checkpointId:string|null;respawnPosition:Vec3};
 export function begin(project:Project):GameState {
  const spawn=project.entities.find(e=>e.role==='player');
  if(!spawn)throw Error('Add a player spawn before playing.');
  const logic=trigger(project.logic??defaultLogic,{score:0,message:'',won:false},'start');
- return {position:[...spawn.position],collected:new Set(),won:logic.won,velocityY:0,grounded:false,jumpHeld:false,respawns:0,logic,insideGoal:false};
+ return {position:[...spawn.position],collected:new Set(),won:logic.won,velocityY:0,grounded:false,jumpHeld:false,respawns:0,logic,insideGoal:false,checkpointId:null,respawnPosition:[...spawn.position]};
 }
 export function compileWorld(project:Project){
  const spawn=project.entities.find(e=>e.role==='player');if(!spawn)throw Error('Add a player spawn before playing.');
@@ -21,7 +21,9 @@ export function compileWorld(project:Project){
  if(!floors.length&&!terrains.length)floors.push({center:[0,0,0],half:[Infinity,0,Infinity]});
  const pickups=project.entities.filter(e=>e.role==='collectible').map(e=>({id:e.id,bounds:bounds(e)}));
  const goals=project.entities.filter(e=>e.role==='goal').map(bounds);
- return {spawn:spawn.position,half,solids,floors,terrains,pickups,goals,settings:project.physics??defaults,logic:project.logic??defaultLogic};
+ const hazards=project.entities.filter(e=>e.role==='hazard').map(bounds);
+ const checkpoints=project.entities.filter(e=>e.role==='checkpoint').map(e=>({id:e.id,bounds:bounds(e)}));
+ return {spawn:spawn.position,half,solids,floors,terrains,pickups,goals,hazards,checkpoints,settings:project.physics??defaults,logic:project.logic??defaultLogic};
 }
 type World=ReturnType<typeof compileWorld>;
 function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolean):GameState{
@@ -43,12 +45,13 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  if(vy<=0&&Number.isFinite(surface)){const top=surface+half[1];const crossing=p[1]>=top-1e-6&&nextY<=top;const downhill=wasOnTerrain&&!jump&&Math.abs(surface-oldSurface)<=.5&&p[1]>=top-1e-6;
  if(crossing||downhill){const contact=moveAxis(p,half,1,top-p[1],solids);if(!contact.hit&&(!landed||top>=nextY)){nextY=top;landed=true;}}}
  p[1]=nextY;if(vertical.hit||landed)vy=0;
- if(p[1]<settings.fallLimit){const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...world.spawn],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,logic,won:logic.won,insideGoal:false};}
- const collected=new Set(state.collected);let logic=state.logic;
+ if(p[1]<settings.fallLimit||world.hazards.some(b=>overlaps(p,half,b))){const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,logic,won:logic.won,insideGoal:false};}
+ const collected=new Set(state.collected);let logic=state.logic;let checkpointId=state.checkpointId;let respawnPosition=state.respawnPosition;
+ const checkpoint=world.checkpoints.find(c=>overlaps(p,half,c.bounds));if(checkpoint&&checkpoint.id!==checkpointId){checkpointId=checkpoint.id;respawnPosition=[checkpoint.bounds.center[0],checkpoint.bounds.center[1]+checkpoint.bounds.half[1]+half[1]+.05,checkpoint.bounds.center[2]];logic=trigger(world.logic,logic,'checkpoint');}
  for(const item of world.pickups)if(!collected.has(item.id)&&overlaps(p,half,item.bounds)){collected.add(item.id);logic=trigger(world.logic,logic,'collect');}
  const insideGoal=world.goals.some(b=>overlaps(p,half,b));if(insideGoal&&!state.insideGoal)logic=trigger(world.logic,logic,'goal');
  const won=logic.won||(world.logic.autoWin&&insideGoal&&world.pickups.every(e=>collected.has(e.id)));
- return {...state,position:p,velocityY:vy,grounded:landed,collected,won,logic,insideGoal};
+ return {...state,position:p,velocityY:vy,grounded:landed,collected,won,logic,insideGoal,checkpointId,respawnPosition};
 }
 export function advance(world:World,state:GameState,input:Input,dt:number):GameState{
  if(state.won)return state;
