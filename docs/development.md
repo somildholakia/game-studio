@@ -1,32 +1,34 @@
-# Development
+# Development and creator workflows
 
-Node 22+. Run npm install, npm run dev, npm test, npm run build. Dev and build first generate an embedded IIFE player bundle with Vite.
+Node.js 22+. Run npm install, npm run dev, npm test and npm run build. Dev and build generate an embedded IIFE player bundle. The development server binds to loopback; the built static editor does not expose credentialed integrations.
 
-## First playable workflow
-Load Treasure Run, press Play, move using WASD or arrows, collect two gems and reach the green exit. Stop restores the authored scene. Set a primitive's gameplay role in the Inspector: decoration, player, solid, collectible, or goal. One player is allowed. Duplicate objects, adjust transforms, undo/redo and export JSON for editable backups. Local autosave uses IndexedDB, with legacy localStorage migration. It can fail due to browser quotas or policies.
+## Playable games
+Load Treasure Run, Sky Steps or Meadow Explorer. Press Play; move using WASD, arrows or on-screen controls, jump with Space or Jump. Collect items and reach the goal. Stop restores the authored scene. Assign roles (decoration, player, solid, collectible, goal) to supported primitives and characters. One player per scene. Undo/redo, project JSON export and self-contained HTML game export are supported. No native executable builds or multiplayer yet.
 
-Export playable HTML generates a self-contained document with the project and bundled player; intended for offline desktop browsers. Browser and file:// export smoke tests are required before release. No external scripts are intentionally fetched at runtime.
+## Project management and assets
+The active workspace autosaves to IndexedDB. Legacy localStorage data migrates without deleting its old backup. The named project library stores independent snapshots; Save project copy, Open, Update or Delete explicitly. These are snapshots, not multiple automatically saved live workspaces. Browser storage can be evicted, and concurrent tabs can overwrite the active workspace; export backups.
+Import a self-contained uncompressed GLB (2 MiB per file, 3 MiB aggregate); external URIs and glTF extensions are rejected. Models retain their materials and are decorative. The import policy is not a full glTF security validator. Prefabs are independent reusable snapshots. Extension packs export and import validated prefabs, referenced models and declarative gameplay rules, with fresh IDs. They are data-only, not executable plugins.
 
-## Assets and character prototypes
-Import a self-contained GLB (2 MiB per file, 3 MiB aggregate) in the asset panel, then Place it. The conservative envelope policy rejects external URIs and all glTF extensions, including Draco and KTX2. Imported models are visual decorations; internal materials are retained. Loading errors are shown in the viewport. This is not a full glTF security validator; resource complexity limits and fuzz testing are required before accepting untrusted public uploads.
-Save the selected object as a prefab, then Place as many independent copies as needed. Asset references are retained and deletion is blocked while referenced. Prefabs are snapshots, not linked hierarchies. Character primitives expose body width, head size and limb length; they are unrigged, low-poly geometry and can be assigned a gameplay role. Cylinder, cone and torus primitives are available. All these settings are included in the existing project format and runtime export.
-IndexedDB stores the current project with embedded assets. Export backups; large assets still need a separate content-addressed object store and OPFS support. Repeated imported instances currently have independent GPU allocations.
+## Physics and editing
+Static swept axis-aligned collisions, gravity, jumping, raised platforms, respawn, height-aware triggers and fixed-substep integration. Direct move/rotate/scale handles with optional snapping and undo. Character collisions remain conservative bounds. No dynamic bodies, joints, general slopes or moving-platform physics.
 
-## Physics and direct editing
-Use WASD/arrows to move and Space to jump. Sky Steps demonstrates raised platforms and a collectible. The runtime compiles static bounds once per play session; swept axis-aligned collision tests, bounded integration substeps, gravity, ceiling and platform contact, fall respawn and height-aware triggers are supported. A world without explicit ground receives an implicit floor at y=0 for compatibility. Ground meshes use conservative bounds; rotated slopes are not simulated accurately. Spawn points should be above the floor and outside obstacles.
-Choose Move, Rotate or Scale in the viewport toolbar, select an object and drag a handle. Snap uses 0.25-unit translation, 15-degree rotation and 0.1 scale increments. A completed drag is recorded in undo history. Imported GLB materials remain unchanged; primitive and character materials use Babylon PBR with color, metallic, roughness and emission controls. The scene has direct lighting, not an environment reflection pipeline.
-World physics settings, material parameters and transform changes are saved in project JSON and exported games.
+## Terrain and environment
+Create a terrain object and edit its seed, grid resolution, amplitude and frequency. It uses deterministic triangle heights for rendering and center-point ground contact; terrain is axis aligned with positive scale and cannot be assigned another gameplay role or animated. Large cliffs, overlapping heightfields and extreme scales have limitations; this is not general mesh collision. Meadow Explorer is a terrain example.
+Environment Studio sets sky/background color, ambient and directional light, sun direction, intensity and color, and exponential fog. Day, sunset and night presets are static settings, not an animated weather system. No HDR environment map, shadow pipeline or volumetric lighting yet.
 
-## Gameplay, animation and modeling
-Gameplay Studio exposes ordered start, collect, goal-entry and respawn rules with a minimum-score condition and score, message or win actions. Rules are declarative; no user code runs. Default auto-win behavior can be disabled. Score and message reset on respawn; collecting an item dispatches one event until respawn.
-Animation Studio supports decorative object transform keyframes with linear interpolation and looping. Create a key at zero, edit the base transform, capture another pose at a later time, and scrub to preview. The animation plays in the editor and exported games. Ground and gameplay objects are excluded to keep physics static. No skeletal animation or moving colliders yet.
-Model Studio supports editable cube topology, numeric vertex positions, duplicate/delete vertex, add/delete triangle and triangle subdivision. Models are decorative meshes with flat shading and a limit of 2,048 vertices and 4,096 triangles per model. Mesh data persists in projects and prefabs; no interactive vertex picking, UV editing or sculpting yet.
+## Modeling, characters and animation
+Model Studio supports editable cube topology, numeric vertex editing, vertex duplicate/delete, triangle add/delete, subdivision, validation and flat shading. Limits: 2,048 vertices and 4,096 triangles per mesh. Custom models are decorative. No sculpting, UV editor, interactive vertex picking or Boolean tools.
+Characters are procedural articulated low-poly figures with adjustable proportions, skin, clothing, hair, shoes, and nine joint angles. Automatic walking and jumping poses drive the player when enabled. This is a rigid mesh hierarchy, not skinned skeleton animation, inverse kinematics or motion retargeting.
+Transform keyframes support decorative objects, linear interpolation, looping and scrubbing. Ground, terrain and gameplay roles are excluded to preserve static collision. PBR primitive materials support color, roughness, metallic and emission.
 
-## AI command boundary
-AI Studio accepts a JSON edit plan, validates each bounded command, previews changes including field-level details, and applies the entire plan as one undoable edit. No arbitrary code or URLs are executed. A project context prompt can be copied to a separate model manually. There are no live provider connections or API key storage; secure BYOK remains future work.
+## Gameplay and audio
+Ordered event rules support start, collect, goal entry and respawn, minimum score conditions and score, message or win actions. No arbitrary scripts. Default win behavior can be disabled.
+Audio Studio generates bounded synthesized oscillator sound effects for start, collect, jump, respawn and win; adjust waveform, duration, pitch and volume. Browser autoplay restrictions require interaction. No audio file imports, spatial mixing or music timeline.
+
+## Local AI and GitHub integrations
+Run npm run dev on localhost. AI Studio accepts a manually pasted JSON plan or requests a plan from OpenAI, OpenRouter or Anthropic using the local gateway. User consent is required before sending project context to a provider; charges may apply. Provider keys are transient and never serialized with projects. Generated commands are validated, reviewed and applied as one undoable edit. No code is executed.
+GitHub project integration accepts a user-supplied least-privilege repository token, a target branch and a .game-studio.json file path. Inspect before committing; use the inspected file SHA for updates. Files are limited to 750 KB. Public repositories expose saved project contents. No OAuth, cloud synchronization, LFS or GitHub App yet.
+The gateways are loopback and same-origin only, intended for local development. Do not deploy them publicly without authentication, rate limits, tenant isolation, secret management, abuse protection and security review. Live credentials and external provider calls have not been verified in CI.
 
 ## Verification
-Run npm test, npm run build, npx playwright install chromium, npm run test:e2e. CI now runs Chromium smoke tests with software WebGL, including local save/restore, play mode, HTML export, event rules and mesh/animation editing. A passing CI run does not certify all devices or production capacity.
-
-## Current limitations
-Static conservative bounding-box character collisions only; no dynamic rigid bodies, joints, slopes, moving-platform physics, touch controls, unrestricted mesh imports, linked prefab inheritance, rigging, skeletal animation, live AI providers or cloud services. Rendering is WebGL. IndexedDB is not a durable backup; multiple tabs can overwrite the same active project. CI uses npm install until a verified lockfile can be generated. CI and browser results must be confirmed before merging. This is an experimental milestone, not a production release.
+Run npm test, npm run build, npx playwright install chromium, npm run test:e2e. CI includes software WebGL Chromium tests for authoring, persistence, play, export, gameplay, mesh/animation, AI plan approval, terrain and character controls. Local gateway tests use mocked upstream responses. See release-gates.md for the production checklist. No full engine parity or million-user claim.
