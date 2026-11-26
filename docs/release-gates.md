@@ -23,4 +23,8 @@ Verified historical baselines:
 - Extension pack source: 45797856001.
 - Procedural terrain and unit tests: 45798213881.
 
+- Articulated characters, environment and expanded tests: 45798633060.
+- Multi-level source checkpoint: 45803417454.
+- HUD and camera checkpoint: 45803505307.
+
 Historical baselines do not certify the current branch head. Latest CI results must be checked separately. No live third-party credentials are used in tests.
