@@ -166,3 +166,22 @@ test('configure dynamic body and moving trigger, then play and restore scene',as
  await page.getByRole('button',{name:'■ Stop',exact:true}).click();await expect(patrol.getByLabel('Round trip (seconds)')).toHaveValue('8');
  await expect(page.locator('footer')).toContainText('Saved on this device');expect(errors).toEqual([]);
 });
+
+test('sculpt a mesh, change its texture and retain material settings on reload',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
+ await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const sculpt=page.getByRole('group',{name:'Sculpt brush',exact:true});
+ await sculpt.getByLabel('Brush mode').selectOption('smooth');await sculpt.getByRole('button',{name:'Apply brush stroke'}).click();
+ await page.getByLabel('UV projection').selectOption('xz');
+ const texture=page.getByRole('group',{name:'Procedural texture',exact:true});
+ await texture.getByLabel('Enable texture').check();await texture.getByLabel('Pattern',{exact:true}).selectOption('brick');await texture.getByLabel('Horizontal repeat').fill('3');
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();
+ await page.getByRole('button',{name:'mesh',exact:true}).click();
+ await expect(page.getByLabel('UV projection')).toHaveValue('xz');await expect(texture.getByLabel('Pattern',{exact:true})).toHaveValue('brick');await expect(texture.getByLabel('Horizontal repeat')).toHaveValue('3');expect(errors).toEqual([]);
+});
+test('author a named counter rule and display it during play',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByRole('button',{name:'+ Add event rule'}).click();
+ const rule=page.getByRole('group',{name:'Rule 1',exact:true});await rule.getByLabel('When').selectOption('start');await rule.getByLabel('Do').selectOption('counter');
+ await rule.getByLabel('Counter name').fill('keys');await rule.getByLabel('Counter amount').fill('3');
+ await page.getByLabel('Show named counters').check();await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.locator('.game-hud')).toContainText('keys: 3');
+});
