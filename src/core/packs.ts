@@ -6,12 +6,13 @@ export type Pack={format:'game-studio-pack';version:1;name:string;assets:ModelAs
 export function createPack(project:Project,name:string):Pack{
  const p=parseProject(JSON.stringify(project));const prefabs=p.prefabs??[];
  const referenced=new Set(prefabs.map(f=>f.source.assetId).filter(Boolean));
- return readPack(JSON.stringify({format:'game-studio-pack',version:1,name,assets:(p.assets??[]).filter(a=>referenced.has(a.id)),prefabs,rules:p.logic?.rules??[]}));
+ return readPack(JSON.stringify({format:'game-studio-pack',version:1,name,assets:(p.assets??[]).filter(a=>referenced.has(a.id)),prefabs,rules:(p.logic?.rules??[]).filter(r=>r.sourceId===undefined)}));
 }
 export function readPack(raw:string):Pack{
  if(raw.length>8_000_000)throw Error('Pack is too large');const p=JSON.parse(raw);
  if(!p||p.format!=='game-studio-pack'||p.version!==1||typeof p.name!=='string'||!p.name.trim()||p.name.length>200||!Array.isArray(p.assets)||!Array.isArray(p.prefabs)||!Array.isArray(p.rules))throw Error('Invalid pack');
  const normalized=parseProject(JSON.stringify({version:1,name:p.name,entities:[],assets:p.assets,prefabs:p.prefabs,logic:{autoWin:true,rules:p.rules}}));
+ if(normalized.logic!.rules.some(r=>r.sourceId!==undefined))throw Error('Extension packs cannot contain level-specific event object references');
  return {format:'game-studio-pack',version:1,name:p.name,assets:normalized.assets!,prefabs:normalized.prefabs!,rules:normalized.logic!.rules};
 }
 export function installPack(project:Project,pack:Pack):Project{

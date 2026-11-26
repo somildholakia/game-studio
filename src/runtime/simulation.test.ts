@@ -55,3 +55,22 @@ describe('checkpoints and hazards',()=>{
  });
  it('returns to the original spawn when no checkpoint is active',()=>{const p:Project={version:1,name:'Hazard',entities:[{...entity('box'),role:'player',position:[0,.75,0]},{...entity('box'),role:'hazard',position:[3,.75,0]}]};let s=begin(p);for(let i=0;i<40&&s.respawns===0;i++)s=step(p,s,{x:1,z:0},.05);expect(s.respawns).toBe(1);expect(s.position[0]).toBeLessThan(.3);expect(s.checkpointId).toBeNull();});
 });
+
+it('collects distinct items and dispatches scoped rules to the correct object',()=>{
+ const p=world();p.entities[1].id='ruby';p.entities.push({...entity('sphere'),id:'emerald',role:'collectible',position:[5,1,0]});
+ p.logic={autoWin:false,rules:[
+  {id:'ruby-score',event:'collect',sourceId:'ruby',minScore:0,action:{kind:'score',amount:10}},
+  {id:'emerald-score',event:'collect',sourceId:'emerald',minScore:0,action:{kind:'score',amount:20}}
+ ]};
+ let s=begin(p);for(let i=0;i<40;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.collected.size).toBe(2);expect(s.logic.score).toBe(30);
+});
+it('dispatches a second goal entry even if its bounds overlap the first goal',()=>{
+ const p=world();p.entities[2].id='first-goal';p.entities.push({...entity('box'),id:'second-goal',role:'goal',position:[5,1,0]});
+ p.logic={autoWin:false,rules:[
+  {id:'first',event:'goal',sourceId:'first-goal',minScore:0,action:{kind:'score',amount:1}},
+  {id:'second',event:'goal',sourceId:'second-goal',minScore:0,action:{kind:'score',amount:10}}
+ ]};
+ let s=begin(p);for(let i=0;i<28;i++)s=step(p,s,{x:1,z:0},.05);expect(s.logic.score).toBe(11);
+ for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(11);
+});

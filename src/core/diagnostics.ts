@@ -1,6 +1,7 @@
 import type {Project} from './project';
 import {orderedScenes} from './scenes';
 import {bounds,overlaps} from '../runtime/collision';
+import {eventSourceRole} from '../runtime/rules';
 import {MAX_BODIES} from '../runtime/bodies';
 export type Diagnostic={severity:'error'|'warning';level:string;message:string;entityId?:string};
 export function diagnose(p:Project):Diagnostic[]{
@@ -12,6 +13,7 @@ export function diagnose(p:Project):Diagnostic[]{
  if(!player)add('error','Add a player spawn.');
  if(level.entities.filter(e=>e.role==='player').length>1)add('error','Only one player is allowed per level.');
  if(bodies.length>MAX_BODIES)add('error','Maximum 64 dynamic objects per level.');
+ for(const [i,rule] of (level.logic?.rules??[]).entries()){if(rule.sourceId!==undefined&&!level.entities.some(e=>e.id===rule.sourceId&&e.role===eventSourceRole(rule.event)))add('warning','Rule '+(i+1)+' references a missing or incompatible event object.');}
  const win=(level.logic?.autoWin??true)&&level.entities.some(e=>e.role==='goal')||level.logic?.rules.some(r=>r.action.kind==='win');
  if(!win)add(scenes.length>1?'error':'warning','No configured goal or win rule.');
  if(!level.entities.some(e=>e.kind==='ground'||e.kind==='terrain'))add('warning','No floor mesh; runtime uses an invisible default floor.');
