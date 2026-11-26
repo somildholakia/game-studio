@@ -17,13 +17,13 @@ export function readPlan(raw:string):Plan{
  case 'add':keys(c,['op','kind','patch']);if(!kinds.includes(c.kind as Entity['kind'])||c.kind==='model')throw Error('Unsupported add kind');return {op:'add',kind:c.kind as Entity['kind'],patch:patch(c.patch)};
  case 'edit':keys(c,['op','id','patch']);if(typeof c.id!=='string')throw Error('Missing entity ID');return {op:'edit',id:c.id,patch:patch(c.patch)};
  case 'delete':keys(c,['op','id']);if(typeof c.id!=='string')throw Error('Missing entity ID');return {op:'delete',id:c.id};
- case 'logic':keys(c,['op','value']);return {op:'logic',value:readLogic(c.value)};
- case 'physics':keys(c,['op','value']);return {op:'physics',value:readPhysics(c.value)};
+ case 'logic':keys(c,['op','value']);if(!Object.hasOwn(c,'value'))throw Error('Missing gameplay settings');return {op:'logic',value:readLogic(c.value)};
+ case 'physics':keys(c,['op','value']);if(!Object.hasOwn(c,'value'))throw Error('Missing physics settings');return {op:'physics',value:readPhysics(c.value)};
  default:throw Error('Unsupported operation');
  }});
  return {version:1,summary:p.summary,commands};
 }
-export type PlanPreview={next:Project;changes:string[];summary:string};
+export type PlanPreview={next:Project;changes:string[];summary:string;details:string[]};
 export function previewPlan(project:Project,raw:string):PlanPreview{
  const plan=readPlan(raw);const original=parseProject(JSON.stringify(project));let next=original;
  for(const c of plan.commands){
@@ -40,7 +40,9 @@ export function previewPlan(project:Project,raw:string):PlanPreview{
  for(const e of next.entities)if(!before.has(e.id))changes.push('Add: '+e.name+' ('+e.kind+')');
  if(JSON.stringify(next.logic)!==JSON.stringify(original.logic))changes.push('Replace gameplay rules');
  if(JSON.stringify(next.physics)!==JSON.stringify(original.physics))changes.push('Replace world physics settings');
- return {next,changes,summary:plan.summary};
+ const details:string[]=[];for(const n of next.entities){const old=before.get(n.id);for(const field of permittedFields){if(JSON.stringify(old?.[field])!==JSON.stringify(n[field]))details.push(n.name+' · '+field+': '+(JSON.stringify(old?.[field])??'(unset)')+' → '+(JSON.stringify(n[field])??'(unset)'));}}
+ if(JSON.stringify(next.logic)!==JSON.stringify(original.logic))details.push('Gameplay rules: '+JSON.stringify(next.logic));if(JSON.stringify(next.physics)!==JSON.stringify(original.physics))details.push('World physics: '+JSON.stringify(next.physics));
+ return {next,changes,summary:plan.summary,details};
 }
 export function buildPlanPrompt(project:Project):string{
  const context={name:project.name,entities:project.entities.slice(0,200).map(({id,name,kind,position,rotation,scale,color,role})=>({id,name,kind,position,rotation,scale,color,role})),truncated:project.entities.length>200,physics:project.physics,logic:project.logic};
