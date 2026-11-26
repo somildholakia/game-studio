@@ -1,3 +1,4 @@
+import {ProviderPanel} from './ProviderPanel';
 import {useState} from 'react';
 import {buildPlanPrompt,previewPlan,type PlanPreview} from '../ai/plan';
 import type {Project} from '../core/project';
@@ -5,8 +6,8 @@ export function AIPlanPanel({project,onChange,disabled}:{project:Project;onChang
  const [raw,setRaw]=useState('');const [error,setError]=useState('');const [showPrompt,setShowPrompt]=useState(false);const [preview,setPreview]=useState<(PlanPreview&{base:Project})|null>(null);
  const valid=preview?.base===project;
  return <fieldset disabled={disabled}><legend>AI Studio · Command preview</legend>
- <p className="hint">Review declarative AI-generated scene changes before applying. Provider connections and API keys are not yet implemented.</p>
- <button onClick={()=>setShowPrompt(v=>!v)}>{showPrompt?'Hide project context':'Show project context prompt'}</button>
+ <p className="hint">Review declarative AI-generated scene changes before applying. Generate through the local BYOK endpoint or paste a plan manually.</p>
+ <ProviderPanel project={project} onPlan={(plan,base)=>{setRaw(plan);setPreview(null);try{setPreview({...previewPlan(base,plan),base});setError('');}catch(e){setError(String(e));}}}/><button onClick={()=>setShowPrompt(v=>!v)}>{showPrompt?'Hide project context':'Show project context prompt'}</button>
  {showPrompt&&<label>Prompt<textarea readOnly rows={8} value={buildPlanPrompt(project)}/></label>}
  <label>JSON edit plan<textarea rows={5} maxLength={100000} placeholder='{"version":1,"summary":"Create a wall","commands":[...]}' value={raw} onChange={e=>{setRaw(e.target.value);setPreview(null);setError('');}}/></label>
  <button disabled={!raw.trim()} onClick={()=>{try{setPreview({...previewPlan(project,raw),base:project});setError('');}catch(e){setPreview(null);setError(String(e));}}}>Validate and preview</button>
