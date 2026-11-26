@@ -31,14 +31,14 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  for(const [id,m] of meshes)if(!ids.has(id)){meshes.delete(id);destroy(m);}
  for(const e of project.entities){let entry=meshes.get(e.id);
  const asset=e.kind==='model'?project.assets?.find(a=>a.id===e.assetId):undefined;
- const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh]);
+ const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain]);
  if(entry&&(entry.signature!==signature||entry.assetData!==asset?.data)){meshes.delete(e.id);destroy(entry);entry=undefined;}
  if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model')m.material=createMaterial(e,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
  if(asset){const current=entry;const valid=()=>!disposed&&meshes.get(e.id)===current;void loadModel(asset,scene,m,valid).then(container=>{if(container&&valid())current.container=container;else if(container){container.removeAllFromScene();container.dispose();}}).catch(err=>{if(valid())onError('Model '+e.name+': '+String(err));});}}
  const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);updateMaterial(m,e);}
  refreshGizmo();
  }
- function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||e.kind==='ground'||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
+ function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
  const render=()=>{
  if(run){
  const input={x:Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft')),z:Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown')),jump:touch.has('jump')||keys.has(' ')};
