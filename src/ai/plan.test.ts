@@ -95,3 +95,7 @@ it('validates counter-controlled solid gates in AI plans',()=>{
  const result=previewPlan(p,plan([{op:'edit',id,patch:{role:'solid',gate}}]));expect(result.next.entities[1].gate).toEqual(gate);
  expect(()=>previewPlan(p,plan([{op:'edit',id,patch:{role:'solid',gate:{...gate,key:'constructor'}}}]))).toThrow();
 });
+
+it('allows custom mesh solids but not dynamic custom meshes',()=>{
+ const p=initialProject();expect(previewPlan(p,plan([{op:'add',kind:'mesh',patch:{role:'solid'}}])).next.entities.at(-1)?.role).toBe('solid');expect(()=>previewPlan(p,plan([{op:'add',kind:'mesh',patch:{role:'dynamic'}}]))).toThrow();
+});

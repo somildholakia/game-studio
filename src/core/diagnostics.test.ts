@@ -6,3 +6,5 @@ it('warns about missing or role-mismatched rule event objects',()=>{
  const p=initialProject();p.logic={autoWin:false,rules:[{id:'a',event:'collect',sourceId:p.entities[0].id,minScore:0,action:{kind:'win'}}]};
  expect(diagnose(p).some(i=>i.message.includes('incompatible event object'))).toBe(true);
 });
+
+it('does not flag an initially open gate as a blocking spawn overlap',()=>{const p=initialProject();p.entities.push({...entity('box'),role:'player'},{...entity('box'),role:'solid',gate:{key:'keys',comparison:'eq',value:0}});expect(diagnose(p).some(i=>i.message.includes('overlaps solid'))).toBe(false);});

@@ -41,7 +41,7 @@ export function parseProject(raw:string):Project {
  const assets=validateAssets(p.assets),assetIds=new Set(assets.map(a=>a.id));
  let imageCount=0;
  function readEntity(e:any):Entity {
- if(!e||typeof e.id!=='string'||!e.id||e.id.length>200||typeof e.name!=='string'||e.name.length>200||!kinds.includes(e.kind)||!vec(e.position)||!vec(e.rotation)||!vec(e.scale)||typeof e.color!=='string'||!/^#[0-9a-f]{6}$/i.test(e.color)||(e.role!==undefined&&!roles.includes(e.role))||(['ground','model','mesh','terrain'].includes(e.kind)&&e.role&&e.role!=='decoration')||(e.kind==='model'&&!assetIds.has(e.assetId)))throw Error('Invalid entity');
+ if(!e||typeof e.id!=='string'||!e.id||e.id.length>200||typeof e.name!=='string'||e.name.length>200||!kinds.includes(e.kind)||!vec(e.position)||!vec(e.rotation)||!vec(e.scale)||typeof e.color!=='string'||!/^#[0-9a-f]{6}$/i.test(e.color)||(e.role!==undefined&&!roles.includes(e.role))||(['ground','model','terrain'].includes(e.kind)&&e.role&&e.role!=='decoration')||(e.kind==='mesh'&&e.role&&e.role!=='decoration'&&e.role!=='solid')||(e.kind==='model'&&!assetIds.has(e.assetId)))throw Error('Invalid entity');
  const result:Entity={id:e.id,name:e.name,kind:e.kind,position:e.position,rotation:e.rotation,scale:e.scale,color:e.color,role:e.role??'decoration'};
  if(e.prefabId!==undefined){if(typeof e.prefabId!=='string'||!e.prefabId||e.prefabId.length>200)throw Error('Invalid prefab reference');result.prefabId=e.prefabId;}
  if(e.kind==='model')result.assetId=e.assetId;

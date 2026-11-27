@@ -190,3 +190,10 @@ it('defers closing an open gate while the player occupies it',()=>{
  for(let i=0;i<15;i++)s=step(p,s,{x:-1,z:0},.05);
  expect(s.position[0]).toBeCloseTo(1.5);
 });
+
+it('blocks movement and supports landing on transformed custom mesh bounds',()=>{
+ const platform={...entity('mesh'),role:'solid' as const,position:[3,1,0] as [number,number,number],scale:[1,1,1] as [number,number,number]};
+ const p:Project={version:1,name:'Custom collider',entities:[{...entity('box'),role:'player',position:[0,.75,0]},platform]};
+ let s=begin(p);for(let i=0;i<30;i++)s=step(p,s,{x:1,z:0},.05);expect(s.position[0]).toBeCloseTo(1.5);
+ p.entities[0].position=[3,4,0];s=begin(p);for(let i=0;i<40;i++)s=step(p,s,{x:0,z:0},.05);expect(s.grounded).toBe(true);expect(s.position[1]).toBeCloseTo(2.5);
+});

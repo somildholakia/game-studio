@@ -16,7 +16,7 @@ export function begin(project:Project):GameState {
 export function compileWorld(project:Project){
  const spawn=project.entities.find(e=>e.role==='player');if(!spawn)throw Error('Add a player spawn before playing.');
  const half=bounds(spawn).half.map(n=>Math.max(.05,n)) as Vec3;
- const solids=project.entities.filter(e=>e.role==='solid'&&!e.gate&&e.kind!=='ground'&&e.kind!=='model'&&e.kind!=='mesh'&&e.kind!=='terrain').map(bounds);
+ const solids=project.entities.filter(e=>e.role==='solid'&&!e.gate&&e.kind!=='ground'&&e.kind!=='model'&&e.kind!=='terrain').map(bounds);
  const gates=project.entities.filter(e=>e.role==='solid'&&e.gate).map(e=>({id:e.id,bounds:bounds(e),condition:e.gate!}));
  const terrains=project.entities.filter(e=>e.kind==='terrain').map(compileTerrain);
  const floors=project.entities.filter(e=>e.kind==='ground').map(bounds);
