@@ -25,3 +25,6 @@ See [game generation evaluation](docs/game-generation-evaluation.md) for procedu
 **Status:** experimental development branch. No production-scale, full engine parity or live AI provider claims.
 
 Subsequent development includes mass-weighted translational body contacts, a bounded server-authoritative independent-lane race API for local development, and a separate [private backup reference service](docs/backup-service.md). These are scoped references, not production cloud/authentication or shared-world multiplayer. See the evidence ledger for verified revision and outstanding gates.
+
+
+The shared local race prototype now includes a 3D editor lobby, host-controlled start, authoritative movement and one shared collectible/winner state on static courses. The cloud backup adapter supports conditional Google Cloud Storage generations and verified separate-store recovery, but requires operator-provisioned storage and identity. The compact editor layout and manual live-provider workflow are additional candidates; see [acceptance evidence](docs/acceptance-evidence.md) for actual test scope and open release gates.
