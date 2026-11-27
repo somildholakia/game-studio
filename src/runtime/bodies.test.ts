@@ -21,3 +21,16 @@ const noContactPlayer:Bounds={center:[100,5,0],half:[.5,.5,.5]};
 const contactStep=(specs:BodySpec[],dt:number)=>advanceBodies(specs,initialBodies(specs),[],[],[],0,-30,dt,noContactPlayer,[0,0,0]);
 it('exchanges normal momentum for equal-mass approaching bodies without adding kinetic energy',()=>{const specs=[movingBody('a',-1.2,5,1,.8),movingBody('b',1.2,-5,1,.8)];const result=contactStep(specs,.1);expect(result.get('a')!.velocity[0]).toBeCloseTo(-4);expect(result.get('b')!.velocity[0]).toBeCloseTo(4);expect(result.get('b')!.position[0]-result.get('a')!.position[0]).toBeCloseTo(1.5);expect(result.get('a')!.velocity[0]**2+result.get('b')!.velocity[0]**2).toBeLessThan(50);});
 it('transfers less speed to a heavier body and conserves linear momentum',()=>{const result=contactStep([movingBody('a',0,4,1,0),movingBody('b',1.5,0,3,0)],1/120);const a=result.get('a')!,b=result.get('b')!;expect(a.velocity[0]).toBeCloseTo(1);expect(b.velocity[0]).toBeCloseTo(1);expect(a.velocity[0]+3*b.velocity[0]).toBeCloseTo(4);expect(b.position[0]-a.position[0]).toBeGreaterThanOrEqual(1.5);});
+
+it('separates initially overlapping bodies with mass-weighted correction and preserves prior state',()=>{
+ const specs=[movingBody('a',0,0,1,0),movingBody('b',1,0,3,0)],before=initialBodies(specs);
+ const result=advanceBodies(specs,before,[],[],[],0,-30,1/120,noContactPlayer,[0,0,0]);
+ const a=result.get('a')!,b=result.get('b')!;
+ expect(b.position[0]-a.position[0]).toBeCloseTo(1.5);expect(a.position[0]).toBeCloseTo(-.375);expect(b.position[0]).toBeCloseTo(1.125);expect(before.get('a')!.position[0]).toBe(0);
+});
+it('dissipates tangential contact velocity without increasing pair momentum or energy',()=>{
+ const a=movingBody('a',0,4,1,0),b=movingBody('b',1.5,0,1,0);a.settings={...a.settings,friction:20,velocity:[4,0,2]};b.settings={...b.settings,friction:20};
+ const result=contactStep([a,b],1/120),va=result.get('a')!.velocity,vb=result.get('b')!.velocity;
+ expect(va[0]).toBeCloseTo(2);expect(vb[0]).toBeCloseTo(2);expect(va[2]).toBeCloseTo(1);expect(vb[2]).toBeCloseTo(1);expect(va[2]+vb[2]).toBeCloseTo(2);
+ expect(va.reduce((n,v)=>n+v*v,0)+vb.reduce((n,v)=>n+v*v,0)).toBeLessThan(20);
+});
