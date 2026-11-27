@@ -37,3 +37,5 @@ A dependency lockfile was generated in successful Validate run 45829995781; CI n
 Context-loss handling now suspends the simulation during Babylon resource restoration and defers editor updates. A browser regression uses WEBGL_lose_context when supported; real-device recovery and failure-path validation remain open.
 
 No live third-party credentials are used in tests. Recheck the current PR head's Actions before treating these checkpoint results as current.
+
+Verified baseline: `4a5eecdd9c34c9d7bee6eed703b340e51ddebf0f` passed [Validate 45997452632](https://github.com/somildholakia/game-studio/actions/runs/45997452632) and [Browser compatibility 45997452539](https://github.com/somildholakia/game-studio/actions/runs/45997452539). The new static release manifest and CI artifact are subject to verification at the updated revision. See [static deployment](static-deployment.md) for scope, artifact integrity, staged rollout and rollback. No public deployment or rollback drill has been performed.

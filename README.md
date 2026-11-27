@@ -20,6 +20,6 @@ Multi-level 3D authoring and standalone campaign HTML export; searchable scene h
 
 The regular CI suite uses Chromium. A separate browser compatibility workflow runs Chromium, Firefox and WebKit on relevant pull request changes; manual dispatch requires the workflow on the default branch. Check Actions for actual results; real-device support is not yet certified.
 
-See [completion checkpoints](docs/completion-checkpoints.md) for an explicit feature acceptance checklist; no percentage is inferred from commit count. See [development](docs/development.md) for workflows, limitations and verification. See [architecture](docs/architecture.md) for planned platform modules.
+See [static deployment and rollback](docs/static-deployment.md) for the client-only build artifact and verification process. See [completion checkpoints](docs/completion-checkpoints.md) for an explicit feature acceptance checklist; no percentage is inferred from commit count. See [development](docs/development.md) for workflows, limitations and verification. See [architecture](docs/architecture.md) for planned platform modules.
 
 **Status:** experimental development branch. No production-scale, full engine parity or live AI provider claims.
