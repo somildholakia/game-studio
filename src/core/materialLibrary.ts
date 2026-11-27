@@ -22,7 +22,7 @@ export function captureMaterial(name:string,e:Entity):MaterialPreset{
 }
 export function applyMaterial(e:Entity,preset:MaterialPreset):Entity{
  if(e.kind==='model')throw Error('Imported models use their own materials');
- const p=readMaterialPreset(preset);return {...e,color:p.color,material:p.material};
+ const p=readMaterialPreset(preset);return {...e,color:p.color,material:p.material,shader:undefined};
 }
 export const builtInMaterials:MaterialPreset[]=[
  {name:'Brushed steel',color:'#a4adb6',material:{metallic:.85,roughness:.38,emissive:'#000000'}},

@@ -6,6 +6,8 @@ import {syncCharacterRig,animateCharacterRig,animateDecorativeRig} from './chara
 import {createEnvironment} from './environment';
 import {createGizmos,type Tool,type Transform} from './gizmos';
 import {createMaterial,updateMaterial} from './material';
+import {createGraphMaterial} from './shaderGraphMaterial';
+import {ShaderMaterial,Color3 as GraphColor} from '@babylonjs/core';
 import {createPrimitive} from './geometry';
 import {loadModel} from './modelLoader';
 import {createAudio,defaultAudio} from '../runtime/audio';
@@ -49,11 +51,11 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  for(const [id,m] of meshes)if(!ids.has(id)){meshes.delete(id);destroy(m);}
  for(const e of project.entities){let entry=meshes.get(e.id);
  const asset=e.kind==='model'?project.assets?.find(a=>a.id===e.assetId):undefined;
- const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain,e.rig?.hairStyle,e.uvProjection,e.smoothNormals]);
+ const signature=JSON.stringify([e.kind,e.character,e.assetId,e.mesh,e.terrain,e.rig?.hairStyle,e.uvProjection,e.smoothNormals,e.shader]);
  if(entry&&(entry.signature!==signature||entry.assetData!==asset?.data)){meshes.delete(e.id);destroy(entry);entry=undefined;}
- if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model'&&e.kind!=='character')m.material=createMaterial(e,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
+ if(!entry){const m=e.kind==='model'?new Mesh(e.id,scene):createPrimitive(e,scene);m.id=e.id;if(e.kind!=='model'&&e.kind!=='character')m.material=e.shader?createGraphMaterial(e,scene,onError):createMaterial(e,scene);entry={mesh:m,signature,assetData:asset?.data};meshes.set(e.id,entry);
  if(asset){const current=entry;const valid=()=>!disposed&&meshes.get(e.id)===current;void loadModel(asset,scene,m,valid).then(container=>{if(container&&valid()){current.container=container;refreshShadows();}else if(container){container.removeAllFromScene();container.dispose();}}).catch(err=>{if(valid())onError('Model '+e.name+': '+String(err));});}}
- const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);updateMaterial(m,e);if(e.kind==='character')syncCharacterRig(m,e);}
+ const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);if(m.material instanceof ShaderMaterial){m.material.setColor3('baseColor',GraphColor.FromHexString(e.color));m.material.wireframe=e.role==='trigger';}else updateMaterial(m,e);if(e.kind==='character')syncCharacterRig(m,e);}
  refreshShadows();refreshGizmo();
  }
  function applyAnimation(project:Project,time:number){for(const e of project.entities){if((!e.animation&&!e.rig?.clip)||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;if(e.kind==='character')animateDecorativeRig(m,e.rig,time,previewing);if(!e.animation)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}

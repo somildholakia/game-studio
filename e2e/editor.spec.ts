@@ -550,3 +550,17 @@ test('solve a character limb target and capture the pose',async({page})=>{
  await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.locator('.entity').filter({hasText:'character'}).click();await expect(rig.getByLabel(/leftElbow/)).toHaveValue('90');
  await ik.getByLabel('Target down').fill('2');await ik.getByLabel('Target forward').fill('2');await ik.getByRole('button',{name:'Solve limb pose'}).click();await expect(ik.getByRole('alert')).toContainText('outside');
 });
+
+test('author a bounded GPU shader, persist it and use it in exported play',async({page},testInfo)=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/shader|compilation/i.test(m.text()))errors.push(m.text());});
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByRole('button',{name:'+ box',exact:true}).click();
+ const graph=page.getByRole('group',{name:'Shader Studio · GPU surface graph'});
+ await graph.getByRole('button',{name:'Bands example'}).click();await graph.getByRole('button',{name:'Apply shader graph'}).click();
+ await expect(graph.getByText('GPU graph active · 3 nodes')).toBeVisible();await expect(page.locator('footer')).toContainText('Saved on this device');
+ await graph.getByLabel('Shader graph JSON').fill('{"version":1,"nodes":[{"kind":"raw","source":"bad"}]}');await graph.getByRole('button',{name:'Apply shader graph'}).click();await expect(graph.getByRole('alert')).toBeVisible();
+ await page.reload();await page.locator('.entity').filter({hasText:/^box\s*$/i}).last().click();await expect(graph.getByText('GPU graph active · 3 nodes')).toBeVisible();
+ await graph.getByRole('button',{name:'Restore PBR material'}).click();await expect(graph.getByText('GPU graph active · 3 nodes')).toHaveCount(0);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(graph.getByText('GPU graph active · 3 nodes')).toBeVisible();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();const file=await download;const path=testInfo.outputPath('shader.html');await copyFile((await file.path())!,path);
+ await page.goto(pathToFileURL(path).href);await expect(page.locator('#hud')).toContainText('Collectibles 0 / 2');await page.waitForTimeout(500);expect(errors).toEqual([]);
+});
