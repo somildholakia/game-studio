@@ -23,3 +23,8 @@ npx vitest run scripts/live-ai-evaluation.test.ts
 ```
 
 Five actual generation requests are evaluated for valid command plans, structural diagnostics and scripted runtime outcomes: key/gate, timed survival, scoped scoring, two stages and a trigger puzzle. The report `reports/live-ai-evaluation.json` contains only provider/model, case names, categorical outcomes and elapsed times. No API keys, raw generated plans or request bodies are written. A failed case fails the run; do not claim live acceptance until the actual report passes. This is a narrow reproducible regression, not general game-quality certification.
+
+
+## Manual GitHub Actions evaluation
+
+The workflow .github/workflows/live-ai.yml is manual dispatch only. Configure a protected live-ai-acceptance environment, restrict its allowed refs and reviewers as appropriate, and store only the authorized provider key as an environment secret. Select the exact provider/model and affirm the cost-confirmation input. The job exposes only the selected provider credential, runs the existing five synthetic cases, and uploads the categorical report. It never runs automatically on pull requests. GitHub may require the workflow to exist on the default branch before it is dispatchable. No provider credential has been supplied or live run performed; do not claim live integration acceptance from this workflow definition. GitHub Models is not used because its inference API was retired on July 30, 2026 (https://docs.github.com/en/github-models).
