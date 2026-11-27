@@ -16,3 +16,5 @@ The long-term target is a browser-native game creation platform, not just an edi
 | Release quality | automated regression coverage; security/dependency/fuzz audit; real-device/accessibility verification; monitoring/load/incident plan; release candidate acceptance |
 
 **Scoring protocol:** maintain a separate evidence record with links to commits, CI runs and manual test reports. Full credit requires the complete acceptance test, not merely code or a passing unit test. A cancelled or superseded run is not a passing browser matrix. Re-evaluate the evidence when the branch changes. Remaining requirements in [release-gates.md](release-gates.md) are mandatory for production regardless of the numerical score. The 50-point threshold is not yet certified by this checklist.
+
+See the [acceptance evidence ledger](acceptance-evidence.md) for the historical verified score and explicitly pending candidate additions. The weights and acceptance tests have not changed.
