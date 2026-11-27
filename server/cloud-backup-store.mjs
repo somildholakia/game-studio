@@ -29,7 +29,7 @@ async function readBlob(objects,tenant,project,record,limits){
  return result.bytes;
 }
 async function ensureBlob(objects,tenant,project,record,bytes,limits){
- if(!await objects.put(blobKey(tenant,project,record.sha),bytes,null))await readBlob(objects,tenant,project,record,limits);
+ await objects.put(blobKey(tenant,project,record.sha),bytes,null);await readBlob(objects,tenant,project,record,limits);
 }
 /** Async, generation-CAS object storage adapter; one tenant index atomically governs project/version quotas.
  * Unreferenced content from failed concurrent writes is possible; the operator owns retention and garbage collection. */
@@ -39,7 +39,7 @@ export function createCloudBackupStore(objects,config={}){
   id(tenant);id(project);
   if(!Number.isSafeInteger(expected)||expected<0)fail(400,'Invalid expected revision');
   if(!Buffer.isBuffer(bytes)||!bytes.length||bytes.length>limits.maxBytes)fail(413,'Invalid backup size');
-  const record={revision:expected+1,sha:sha(bytes),size:bytes.length};
+  bytes=Buffer.from(bytes);const record={revision:expected+1,sha:sha(bytes),size:bytes.length};
   for(let attempt=0;attempt<4;attempt++){
    const {projects,version}=await index(objects,tenant,limits),history=projects.get(project)??[];
    if(history.length!==expected)fail(409,'Backup revision conflict');
