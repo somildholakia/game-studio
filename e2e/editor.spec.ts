@@ -382,3 +382,21 @@ test('smoothly subdivide mesh topology and undo the operation',async({page})=>{
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(stats).toContainText('8 vertices · 12 triangles');
  await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(stats).toContainText('26 vertices · 48 triangles');
 });
+
+test('pause and resume the simulation clock in editor and exported play',async({page},testInfo)=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByLabel('Show level timer').check();
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ const timer=page.getByRole('timer');
+ await expect(timer).toHaveText('Time: 0:00');
+ await page.getByRole('button',{name:'Pause',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Paused');const frozen=await timer.textContent();
+ await page.waitForTimeout(1300);await expect(timer).toHaveText(frozen!);
+ await page.getByRole('button',{name:'Resume',exact:true}).click();await expect(timer).not.toHaveText(frozen!,{timeout:10000});
+ await page.getByRole('button',{name:'■ Stop',exact:true}).click();
+ const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();
+ const file=await pending,path=testInfo.outputPath('pause.html');await copyFile((await file.path())!,path);await page.goto(pathToFileURL(path).href);
+ await expect(page.locator('#hud')).toContainText('Collectibles 0 / 2',{timeout:30000});
+ await page.getByRole('button',{name:'Pause',exact:true}).click();const exported=await page.locator('#timer').textContent();
+ await expect(page.locator('#pause-notice')).toBeVisible();await page.waitForTimeout(1300);await expect(page.locator('#timer')).toHaveText(exported!);
+ await page.getByRole('button',{name:'Resume',exact:true}).click();await expect(page.locator('#timer')).not.toHaveText(exported!,{timeout:10000});
+});

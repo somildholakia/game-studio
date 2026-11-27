@@ -30,8 +30,9 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  function destroy(entry:Entry){entry.container?.removeAllFromScene();entry.container?.dispose();entry.mesh.dispose(false,true);}
  const keys=new Set<string>();const touch=new Set<Control>();const audio=createAudio();
  const unlock=()=>{void audio.unlock().catch(()=>{});};
+ let paused=false;
  let run:{project:Project;state:GameState;world:ReturnType<typeof compileWorld>;player:string;notify:(s:PlayStatus)=>void;last:string;total:number}|null=null;
- const down=(e:KeyboardEvent)=>{if(run&&e.target===canvas&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())){e.preventDefault();keys.add(e.key.toLowerCase());}};
+ const down=(e:KeyboardEvent)=>{if(run&&!paused&&e.target===canvas&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())){e.preventDefault();keys.add(e.key.toLowerCase());}};
  const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
  const clear=()=>{keys.clear();touch.clear();};
  const clearKeys=()=>keys.clear();const visibility=()=>{if(document.hidden)clear();};
@@ -53,7 +54,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  }
  function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
  const render=()=>{
- if(run){
+ if(run&&!paused){
  const pad=pollGamepad(()=>document.hidden?[]:navigator.getGamepads?.()??[]);
  const horizontal=Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft'));
  const vertical=Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown'));
@@ -71,9 +72,9 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  scene.render();if(onMetrics&&performance.now()-lastMetrics>=750){lastMetrics=performance.now();onMetrics({fps:Math.round(engine.getFps()),meshes:scene.meshes.length,vertices:scene.getTotalVertices(),width:engine.getRenderWidth(),height:engine.getRenderHeight()});}};
  engine.runRenderLoop(render);
  const observer=new ResizeObserver(()=>engine.resize());observer.observe(canvas);
- return {sync,setVertexMode(enabled:boolean,index:number){vertexMode=enabled;vertexIndex=index;refreshGizmo();},setControl(c:Control,active:boolean){if(!run)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewing=time!==null;sync(project);if(time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
+ return {sync,setVertexMode(enabled:boolean,index:number){vertexMode=enabled;vertexIndex=index;refreshGizmo();},setPaused(value:boolean){if(!run||run.state.won||run.state.logic.lost)return false;paused=value;clear();if(paused)audio.stop();else canvas.focus({preventScroll:true});return true;},setControl(c:Control,active:boolean){if(!run||paused)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewing=time!==null;sync(project);if(time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
  const state=begin(project);const player=project.entities.find(e=>e.role==='player')!;
- previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length};canvas.focus({preventScroll:true});refreshGizmo();
- },stop(project:Project){run=null;previewing=false;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
+ paused=false;previewing=false;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project&&!paused)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length};canvas.focus({preventScroll:true});refreshGizmo();
+ },stop(project:Project){run=null;paused=false;previewing=false;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
  dispose(){disposed=true;run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();marker?.dispose(false,true);shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);canvas.removeEventListener('blur',clearKeys);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
 }
