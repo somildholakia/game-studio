@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync,writeFileSync,readdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {createBackupStore} from '../server/backup-store.mjs';
+function fixture(t,options){const root=mkdtempSync(join(tmpdir(),'studio-backup-'));t.after(()=>rmSync(root,{recursive:true,force:true}));return {root,store:createBackupStore(root,options)};}
+const bytes=value=>Buffer.from(JSON.stringify(value));
+const status=code=>e=>e.status===code;
+test('retains versions across reopening, restores as new revision, rejects stale writes',t=>{const {root,store}=fixture(t);const first=bytes({name:'original'}),second=bytes({name:'edited'});const a=store.append('tenant-a','game',0,first);store.append('tenant-a','game',1,second);assert.throws(()=>store.append('tenant-a','game',1,first),status(409));const reopened=createBackupStore(root);assert.deepEqual(reopened.read('tenant-a','game',1).bytes,first);assert.deepEqual(reopened.read('tenant-a','game',2).bytes,second);assert.deepEqual(reopened.restore('tenant-a','game',1,2),{revision:3,sha:a.sha});assert.equal(reopened.list('tenant-a','game').length,3);assert.deepEqual(reopened.read('tenant-a','game',3).bytes,first);});
+test('namespaces equal project IDs and rejects traversal',t=>{const {store}=fixture(t);store.append('tenant-a','game',0,bytes('a'));assert.deepEqual(store.list('tenant-b','game'),[]);assert.throws(()=>store.read('tenant-b','game',1),status(404));store.append('tenant-b','game',0,bytes('b'));assert.deepEqual(store.read('tenant-a','game',1).bytes,bytes('a'));assert.deepEqual(store.read('tenant-b','game',1).bytes,bytes('b'));for(const bad of ['../tenant-a','/etc','..','a/b','a\\b'])assert.throws(()=>store.list(bad,'game'),status(400));});
+test('enforces quotas and detects tampered backup content',t=>{const {root,store}=fixture(t,{maxBytes:16,maxProjects:1,maxVersions:2});assert.throws(()=>store.append('a','game',0,Buffer.alloc(17)),status(413));store.append('a','game',0,bytes('a'));store.append('a','game',1,bytes('b'));assert.throws(()=>store.append('a','game',2,bytes('c')),status(429));assert.throws(()=>store.append('a','other',0,bytes('c')),status(429));const path=join(root,'a','game');const name=readdirSync(path).find(n=>n.startsWith('0001-'));writeFileSync(join(path,name),bytes('x'));assert.throws(()=>store.read('a','game',1),status(500));assert.throws(()=>store.restore('a','game',1,2),status(500));});
