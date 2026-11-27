@@ -25,7 +25,7 @@ export function createBackupServer({store,authenticate,maxBytes=10_000_000,maxCo
  const server=createServer({requestTimeout:15000,headersTimeout:10000,maxHeaderSize:8192},(req,res)=>{
   if(active>=maxConcurrent){send(res,429,{error:'Backup service busy'},{Connection:'close'});return;}active++;
   void (async()=>{
-   const p=authenticate(req.headers.authorization);if(!p)fail(401,'Authentication required');
+   const p=await authenticate(req.headers.authorization);if(!p)fail(401,'Authentication required');
    const match=/^\/v1\/projects\/([a-zA-Z0-9][a-zA-Z0-9_-]{0,63})\/revisions(?:\/([1-9][0-9]{0,3})(\/restore)?)?$/.exec(req.url||'');
    if(!match)fail(404,'Backup endpoint not found');const [,project,number,restore]=match,revision=number?Number(number):null;
    if(req.method==='GET'&&!restore){if(revision===null){send(res,200,{revisions:await store.list(p.tenant,project)});return;}const record=await store.read(p.tenant,project,revision);res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="project.json"','Content-Length':record.bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','ETag':'"'+record.sha+'"'});res.end(record.bytes);return;}
