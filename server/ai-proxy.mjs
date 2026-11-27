@@ -1,4 +1,5 @@
 // Local development BYOK endpoint. Do not expose to the public without auth and rate limits.
+import {localJsonError,createUpstreamBudget} from './local-policy.mjs';
 const MAX_BODY=180000,MAX_RESPONSE=500000;
 const providers={
  openai:{url:'https://api.openai.com/v1/chat/completions',key:'OPENAI_API_KEY'},
@@ -11,15 +12,15 @@ async function readBounded(stream,max){
  return Buffer.concat(chunks).toString('utf8');
 }
 function send(res,status,body){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(body));}
-export function aiMiddleware(req,res,next){
+export function createAiMiddleware(budget=createUpstreamBudget({maxConcurrent:2,maxStarts:12,windowMs:60000})){
+ return (req,res,next)=>{
  if(req.url?.split('?')[0]!=='/api/ai/plan')return next();
- void handle(req,res).catch(()=>{if(!res.headersSent)send(res,500,{error:'AI request failed.'});else res.end();});
+ void handle(req,res,budget).catch(()=>{if(!res.headersSent)send(res,500,{error:'AI request failed.'});else res.end();});
+ };
 }
-async function handle(req,res){
- if(req.method!=='POST')return send(res,405,{error:'POST required'});
- if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress))return send(res,403,{error:'Local access only'});
- if(!req.headers.host||!['localhost','127.0.0.1','[::1]'].includes(req.headers.host.replace(/:\d+$/,''))||!req.headers.origin||req.headers.origin!=='http://'+req.headers.host)return send(res,403,{error:'Same-origin local access required'});
- if(!req.headers['content-type']?.startsWith('application/json'))return send(res,415,{error:'JSON required'});
+export const aiMiddleware=createAiMiddleware();
+async function handle(req,res,budget){
+ const denied=localJsonError(req);if(denied)return send(res,denied.status,{error:denied.error});
  let input;try{input=JSON.parse(await readBounded(req,MAX_BODY));}catch{return send(res,400,{error:'Invalid or oversized request'});}
  if(!input||!Object.hasOwn(providers,input.provider)||typeof input.model!=='string'||!/^[A-Za-z0-9_.:/-]{1,150}$/.test(input.model)||typeof input.context!=='string'||input.context.length>140000||typeof input.task!=='string'||!input.task.trim()||input.task.length>4000||(input.apiKey!==undefined&&(typeof input.apiKey!=='string'||input.apiKey.length>2048||/[\r\n]/.test(input.apiKey))))return send(res,400,{error:'Invalid provider, model or prompt'});
  const provider=providers[input.provider];const key=input.apiKey?.trim()||process.env[provider.key];
@@ -31,6 +32,7 @@ async function handle(req,res){
  const body=anthropic?{model:input.model,max_tokens:4096,system,messages:[{role:'user',content:user}]}:{model:input.model,messages:[{role:'system',content:system},{role:'user',content:user}],response_format:{type:'json_object'},max_completion_tokens:4096,...(input.provider==='openai'?{store:false}:{})};
  // OpenRouter supports max_tokens across a wider range of models.
  if(input.provider==='openrouter'){delete body.max_completion_tokens;body.max_tokens=4096;}
+ const release=budget.acquire();if(!release)return send(res,429,{error:'Local AI request limit reached. Try again later.'});
  try{
  const upstream=await fetch(provider.url,{method:'POST',headers,body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(90000)});
  if(!upstream.ok){await upstream.body?.cancel();return send(res,502,{error:'Provider returned HTTP '+upstream.status+'. Check key, model access, quota and JSON mode compatibility.'});}
@@ -38,5 +40,5 @@ async function handle(req,res){
  const raw=anthropic?result.content?.filter(c=>c.type==='text').map(c=>c.text).join(''):result.choices?.[0]?.message?.content;
  if(typeof raw!=='string'||!raw||raw.length>100000)return send(res,502,{error:'Provider returned no valid bounded plan.'});
  return send(res,200,{plan:raw});
- }catch{return send(res,502,{error:'Provider request failed or timed out.'});}
+ }catch{return send(res,502,{error:'Provider request failed or timed out.'});}finally{release();}
 }

@@ -20,7 +20,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: npm run build
-      - run: node --test scripts/static-release.test.mjs
+      - run: node --test scripts/*.test.mjs
       - run: node scripts/static-release.mjs write dist
       - run: node scripts/static-release.mjs verify dist
       - run: npx playwright install --with-deps chromium
