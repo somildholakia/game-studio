@@ -24,8 +24,8 @@ export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,soli
  const next=new Map<string,BodyState>();for(const spec of specs){const b=previous.get(spec.id)!;next.set(spec.id,{position:[...b.position],velocity:[...b.velocity]});}
  for(const spec of specs){
  const b=next.get(spec.id)!,half=spec.bounds.half,settings=spec.settings;
- const other=specs.filter(s=>s.id!==spec.id).map(s=>bodyBounds(s,next.get(s.id)!));
- const obstacles=combineBounds(solids,[...other,player]);
+ const other=specs.filter(s=>s.id!==spec.id);
+ const obstacles=combineBounds(solids,[player]);
  // Contact-driven horizontal force; player remains a kinematic controller.
  if(overlaps(b.position,half,{center:[player.center[0]+push[0]*dt,player.center[1],player.center[2]+push[2]*dt],half:player.half})){
  for(const axis of [0,2] as const){if(push[axis]*(b.position[axis]-player.center[axis])>0)b.velocity[axis]=Math.max(-20,Math.min(20,b.velocity[axis]+push[axis]*dt*12/settings.mass));}
@@ -34,17 +34,25 @@ export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,soli
  let grounded=false;
  for(const axis of [0,2,1] as const){
  const delta=b.velocity[axis]*dt;const moved=moveAxis(b.position,half,axis,delta,obstacles);
- let target=moved.position,hit=moved.hit;
+ let target=moved.position,hit=moved.hit,contact:BodySpec|undefined;
+ // Pick the nearest swept contact; a static collider wins exact ties.
+ for(const candidate of other){const sweep=moveAxis(b.position,half,axis,delta,[bodyBounds(candidate,next.get(candidate.id)!)]);if(sweep.hit&&(delta>0?sweep.position<target:sweep.position>target)){target=sweep.position;hit=true;contact=candidate;}}
  if(axis===1&&delta<0){
  let surface=-Infinity;
  for(const floor of floors)if(overlaps(b.position,half,floor,[0,2])&&floor.center[1]+floor.half[1]+half[1]<=b.position[1]+.0001)surface=Math.max(surface,floor.center[1]+floor.half[1]);
  for(const t of terrains){const h=t.height(b.position[0],b.position[2]);if(h!==null&&h+half[1]<=b.position[1]+.0001)surface=Math.max(surface,h);}
- const top=surface+half[1];if(Number.isFinite(top)&&target<top&&b.position[1]>=top-.0001){target=top;hit=true;}
+ const top=surface+half[1];if(Number.isFinite(top)&&target<top&&b.position[1]>=top-.0001){target=top;hit=true;contact=undefined;}
  grounded=hit;
  }
- if(axis!==1){const candidate=[...b.position] as Vec3;candidate[axis]=target;for(const t of terrains){const h=t.height(candidate[0],candidate[2]);if(h!==null&&candidate[1]-half[1]<h-.001){target=b.position[axis];hit=true;break;}}}
+ if(axis!==1){const candidate=[...b.position] as Vec3;candidate[axis]=target;for(const t of terrains){const h=t.height(candidate[0],candidate[2]);if(h!==null&&candidate[1]-half[1]<h-.001){target=b.position[axis];hit=true;contact=undefined;break;}}}
  b.position[axis]=target;
- if(hit){b.velocity[axis]=-b.velocity[axis]*settings.restitution;if(Math.abs(b.velocity[axis])<.15)b.velocity[axis]=0;}
+ if(hit){
+ if(contact){
+  // Equal and opposite normal impulses conserve linear momentum. Only approaching pairs collide.
+  const peer=next.get(contact.id)!,direction=Math.sign(delta),closing=(b.velocity[axis]-peer.velocity[axis])*direction;
+  if(closing>0){const impulse=(1+Math.min(settings.restitution,contact.settings.restitution))*closing/(1/settings.mass+1/contact.settings.mass);b.velocity[axis]-=direction*impulse/settings.mass;peer.velocity[axis]+=direction*impulse/contact.settings.mass;}
+ }else{b.velocity[axis]=-b.velocity[axis]*settings.restitution;if(Math.abs(b.velocity[axis])<.15)b.velocity[axis]=0;}
+ }
  }
  if(grounded){const factor=Math.max(0,1-settings.friction*dt);b.velocity[0]*=factor;b.velocity[2]*=factor;}
  if(b.position[1]<fallLimit){b.position=[...spec.bounds.center];b.velocity=[...settings.velocity];}
