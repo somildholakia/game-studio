@@ -37,3 +37,28 @@ describe('streamable hosted game packages',()=>{
   expect(()=>zipHostedFiles([{path:'../index.html',bytes}])).toThrow();expect(()=>zipHostedFiles([{path:'index.html',bytes},{path:'index.html',bytes}])).toThrow();
  });
 });
+
+function model(id:string,label:string){
+ const json=new TextEncoder().encode(JSON.stringify({asset:{version:'2.0'},meshes:[{primitives:[]}],extras:{label}})),n=Math.ceil(json.length/4)*4;
+ const bytes=new Uint8Array(20+n),v=new DataView(bytes.buffer);v.setUint32(0,0x46546c67,true);v.setUint32(4,2,true);v.setUint32(8,bytes.length,true);v.setUint32(12,n,true);v.setUint32(16,0x4e4f534a,true);bytes.fill(32,20);bytes.set(json,20);
+ return {id:'sha256:'+id.repeat(64),name:label+'.glb',format:'glb' as const,data:btoa(String.fromCharCode(...bytes))};
+}
+it('deduplicates identical model content, omits unused assets, and streams only the requested level dependencies',async()=>{
+ const p=fixture(),a=model('a','shared'),b=model('b','shared'),c=model('c','other'),unused=model('d','unused');
+ p.assets=[a,b,c,unused];p.entities.push({...entity('model'),assetId:a.id},{...entity('model'),assetId:b.id});p.levels![0].entities.push({...entity('model'),assetId:c.id});
+ const {manifest,files}=await createHostedCampaign(p);
+ expect(manifest.assets).toHaveLength(3);expect(files.filter(f=>f.path.startsWith('assets/'))).toHaveLength(2);
+ expect(manifest.assets[0].path).toBe(manifest.assets[1].path);expect(manifest.levels[0].assetIds).toEqual([a.id,b.id]);
+ const calls:string[]=[];const fetcher:typeof fetch=async input=>{const path=new URL(String(input)).pathname.slice(1);calls.push(path);return new Response(files.find(f=>f.path===path)?.bytes);};
+ const first=await loadHostedLevel(manifest,0,'https://example.test/',undefined,fetcher);
+ expect(first.assets).toEqual([a,b]);expect(calls).toEqual(['levels/00.gstudio',manifest.assets[0].path]);
+ const second=await loadHostedLevel(manifest,1,'https://example.test/',undefined,fetcher);
+ expect(second.assets).toEqual([c]);expect(calls.slice(2)).toEqual(['levels/01.gstudio',manifest.assets[2].path]);
+ await expect(loadHostedLevel(manifest,0,'https://example.test/',undefined,async input=>{const path=new URL(String(input)).pathname.slice(1);const bytes=files.find(f=>f.path===path)!.bytes;return new Response(path.startsWith('assets/')?bytes.slice(0,-1):bytes);})).rejects.toThrow('integrity');
+});
+it('packages 32 levels while retaining only the chosen level in the decoded runtime project',async()=>{
+ const p=fixture();const first=p.levels![0];p.levels=Array.from({length:31},(_,i)=>({...structuredClone(first),id:'stage-'+i,name:'Stage '+i}));p.sceneOrder=['a',...p.levels.map(l=>l.id)];
+ const {manifest,files}=await createHostedCampaign(p);expect(files).toHaveLength(32);
+ const requested:string[]=[];const chosen=await loadHostedLevel(manifest,31,'https://example.test/',undefined,async input=>{const path=new URL(String(input)).pathname.slice(1);requested.push(path);return new Response(files.find(f=>f.path===path)!.bytes);});
+ expect(chosen.sceneId).toBe('stage-30');expect(chosen.levels).toEqual([]);expect(requested).toEqual(['levels/31.gstudio']);
+});
