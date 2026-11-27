@@ -74,3 +74,6 @@ Custom meshes can preserve a source mesh and evaluate an ordered stack of up to 
 Shader graphs are capped at 64 references per project, including inactive levels and prefab sources, to bound shader program churn. A graph cannot be saved as a PBR material preset; restore PBR or apply a saved PBR preset. Browser regression also checks the actual rendered canvas pixels for a shader-only color change.
 
 Both shader and modifier drafts now have visual form controls: add bounded nodes/steps, choose input references, colors, blends, axes and box cutter dimensions, and reorder/remove modifier steps. Advanced JSON remains available for copying and precise edits. Changes remain drafts until Apply, with a single undoable commit.
+
+## Weighted skeletal limbs
+Character Studio offers optional smooth weighted limb meshes. Each arm and leg has two hierarchical joint transforms and a continuous tube with interpolated weights around the joint; CPU linear blend skinning updates vertex positions and normals in the shared editor/player renderer. Bind pose, blended joint transforms and endpoints have numerical tests. Rigid articulated parts remain the default. Smooth skinning is limited to procedural limbs, not arbitrary imported mesh weight painting or full-body skinning.

@@ -3,7 +3,7 @@ export type Joint=typeof joints[number];
 export type JointPose=Record<Joint,number>;
 export type JointKey={time:number;pose:JointPose};
 export type JointClip={loop:boolean;keys:JointKey[]};
-export type CharacterRig={skin:string;hair:string;clothing:string;shoes:string;hairStyle:'none'|'cap'|'short';motion:boolean;pose:JointPose;clip?:JointClip};
+export type CharacterRig={skin:string;hair:string;clothing:string;shoes:string;hairStyle:'none'|'cap'|'short';motion:boolean;pose:JointPose;clip?:JointClip;skinMode?:'rigid'|'weighted'};
 export const neutralPose=Object.fromEntries(joints.map(j=>[j,0])) as JointPose;
 export const defaultRig:CharacterRig={skin:'#d5a384',hair:'#382c27',clothing:'#476b92',shoes:'#283244',hairStyle:'short',motion:true,pose:neutralPose};
 function readPose(raw:unknown):JointPose{
@@ -36,8 +36,8 @@ export function readRig(raw:unknown):CharacterRig{
  if(raw===undefined)return structuredClone(defaultRig);
  const r=raw as CharacterRig;if(!r||typeof r.motion!=='boolean'||!['none','cap','short'].includes(r.hairStyle)||!r.pose)throw Error('Invalid character rig');
  const colors=['skin','hair','clothing','shoes'] as const;for(const k of colors)if(typeof r[k]!=='string'||!/^#[0-9a-f]{6}$/i.test(r[k]))throw Error('Invalid character color');
- const pose=readPose(r.pose);
- return {skin:r.skin,hair:r.hair,clothing:r.clothing,shoes:r.shoes,hairStyle:r.hairStyle,motion:r.motion,pose,...(r.clip!==undefined?{clip:readJointClip(r.clip)}:{})};
+ const pose=readPose(r.pose);if(r.skinMode!==undefined&&!['rigid','weighted'].includes(r.skinMode))throw Error('Invalid skin mode');
+ return {...(r.skinMode!==undefined?{skinMode:r.skinMode}:{}),skin:r.skin,hair:r.hair,clothing:r.clothing,shoes:r.shoes,hairStyle:r.hairStyle,motion:r.motion,pose,...(r.clip!==undefined?{clip:readJointClip(r.clip)}:{})};
 }
 export function motionPose(base:JointPose,time:number,moving:boolean,grounded:boolean):JointPose{
  if(!grounded)return {...base,leftShoulder:-35,rightShoulder:-35,leftHip:-28,rightHip:16,leftKnee:35,rightKnee:18};

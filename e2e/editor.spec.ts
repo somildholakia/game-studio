@@ -612,3 +612,14 @@ test('build shader and modifier graphs using visual controls without writing JSO
  await mods.getByRole('button',{name:'Add mirror step'}).click();await mods.getByLabel('Mirror axis').selectOption('2');
  await mods.getByRole('button',{name:'Apply modifier stack'}).click();await expect(mods.getByTestId('modifier-summary')).toContainText('2 active steps');
 });
+
+test('author weighted skeletal limbs and retain the skinning mode',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ character',exact:true}).click();
+ const rig=page.getByRole('group',{name:'Character Studio · Appearance and joints'});
+ await rig.getByLabel('Limb skinning').selectOption('weighted');await rig.getByLabel(/leftElbow/).fill('90');
+ await expect(rig.getByLabel(/leftElbow/)).toHaveValue('90');await expect(page.locator('footer')).toContainText('Saved on this device');
+ await page.reload();await page.locator('.entity').filter({hasText:'character'}).click();
+ await expect(rig.getByLabel('Limb skinning')).toHaveValue('weighted');await expect(rig.getByLabel(/leftElbow/)).toHaveValue('90');
+ await rig.getByRole('button',{name:'Create joint animation'}).click();await expect(rig.getByRole('button',{name:'Preview joints'})).toBeVisible();
+ await rig.getByRole('button',{name:'Preview joints'}).click();await expect(rig.getByRole('button',{name:'Stop joint preview'})).toBeVisible();
+});
