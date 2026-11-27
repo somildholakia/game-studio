@@ -1,0 +1,35 @@
+name: Live Git project acceptance
+on:
+  push:
+    branches: [foundation/browser-editor]
+    paths:
+      - 'scripts/live-github.mjs'
+      - 'server/github-proxy.mjs'
+      - 'server/local-policy.mjs'
+      - '.github/workflows/live-github.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-version-control:
+    if: github.repository == 'somildholakia/game-studio' && github.actor == 'somildholakia'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/live-github.mjs
+        env:
+          GAME_STUDIO_LIVE_GIT: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-github-acceptance
+          path: reports/live-github.json
+          if-no-files-found: error
