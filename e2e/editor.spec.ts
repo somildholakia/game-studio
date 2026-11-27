@@ -116,6 +116,8 @@ test('play and export an ordered multi-level campaign',async({page},testInfo)=>{
  await expect(page.locator('#hud')).toContainText('First stage');
  await page.getByRole('button',{name:'Next level',exact:true}).click();
  await expect(page.locator('#hud')).toContainText('Second stage');
+ const progressDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Save progress',exact:true}).click();const progressFile=await progressDownload;const progressPath=testInfo.outputPath('progress.json');await copyFile((await progressFile.path())!,progressPath);
+ await page.reload();await expect(page.locator('#hud')).toContainText('First stage');await page.getByLabel('Load progress').setInputFiles(progressPath);await expect(page.locator('#hud')).toContainText('Second stage');
  await expect(page.locator('#hud')).toContainText('Game complete!');
 });
 test('filter workspace and configure a custom HUD',async({page})=>{

@@ -1,4 +1,5 @@
 import {defaultPresentation,hudLines,timerText} from '../core/presentation';
+import {makeProgress,readProgress,projectFingerprint} from '../runtime/progress';
 import {campaign} from '../core/scenes';
 import {bindTouchControls} from '../runtime/controls';
 import {parseProject} from '../core/project';
@@ -7,20 +8,25 @@ const canvas=document.querySelector<HTMLCanvasElement>('#game')!;
 const hud=document.querySelector<HTMLElement>('#hud')!;
 const restart=document.querySelector<HTMLButtonElement>('#restart')!;
 const pause=document.querySelector<HTMLButtonElement>('#pause')!;
+const save=document.querySelector<HTMLButtonElement>('#save-progress')!,load=document.querySelector<HTMLInputElement>('#load-progress')!;
+const progressNotice=document.querySelector<HTMLElement>('#progress-notice')!;
 try{
  const project=parseProject(document.querySelector('#project')?.textContent??'');
  const viewport=mountViewport(canvas,()=>{},message=>{const error=document.createElement('p');error.setAttribute('role','alert');error.textContent=message;hud.after(error);});
  const settings=project.presentation??defaultPresentation;hud.style.color=settings.hudColor;
  const timer=document.querySelector<HTMLElement>('#timer')!;timer.hidden=!settings.showTimer;timer.style.color=settings.hudColor;
- const levels=campaign(project);let index=0,paused=false;const next=document.querySelector<HTMLButtonElement>('#next-level')!;
+ const levels=campaign(project),fingerprint=projectFingerprint(project);let index=0,paused=false,unlocked=0,generation=0;const next=document.querySelector<HTMLButtonElement>('#next-level')!;
  const pauseNotice=document.querySelector<HTMLElement>('#pause-notice')!;
  const controls=document.querySelector<HTMLElement>('#touch-controls');
  const updatePause=()=>{pause.textContent=paused?'Resume':'Pause';pauseNotice.hidden=!paused;if(controls)controls.hidden=paused;};
  pause.addEventListener('click',()=>{if(viewport.setPaused(!paused)){paused=!paused;updatePause();}});
- const play=()=>{paused=false;pause.disabled=false;updatePause();next.hidden=true;timer.textContent=timerText();viewport.start(levels[index],s=>{const final=index===levels.length-1;const lines=hudLines(settings,s);if(s.won&&final&&levels.length>1)lines.push('Game complete!');const message=(levels.length>1?levels[index].sceneName+' · ':'')+lines.join(' · ');if(hud.textContent!==message)hud.textContent=message;if(settings.showTimer)timer.textContent=timerText(s.elapsedSeconds);next.hidden=!s.won||final;pause.disabled=!!(s.won||s.lost);});};
+ const play=()=>{generation++;paused=false;pause.disabled=false;updatePause();next.hidden=true;timer.textContent=timerText();viewport.start(levels[index],s=>{const final=index===levels.length-1;if(s.won&&!final)unlocked=Math.max(unlocked,index+1);const lines=hudLines(settings,s);if(s.won&&final&&levels.length>1)lines.push('Game complete!');const message=(levels.length>1?levels[index].sceneName+' · ':'')+lines.join(' · ');if(hud.textContent!==message)hud.textContent=message;if(settings.showTimer)timer.textContent=timerText(s.elapsedSeconds);next.hidden=!s.won||final;pause.disabled=!!(s.won||s.lost);});};
+ save.addEventListener('click',()=>{try{const url=URL.createObjectURL(new Blob([JSON.stringify(makeProgress(project,unlocked,fingerprint))],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='game-studio-progress.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);progressNotice.textContent='Saved level: '+levels[unlocked].sceneName;}catch(error){progressNotice.textContent=String(error);}});
+ load.addEventListener('change',async()=>{const file=load.files?.[0];load.value='';if(!file)return;const before=generation;try{if(file.size>4096)throw Error('Save file exceeds size limit');const saved=readProgress(await file.text(),project,fingerprint);if(generation!==before)throw Error('Game changed during load; try again');index=unlocked=saved;play();progressNotice.textContent='Loaded level: '+levels[index].sceneName;}catch(error){progressNotice.textContent=String(error);}});
+ document.querySelector<HTMLElement>('#progress-controls')!.hidden=levels.length<2;
  next.addEventListener('click',()=>{if(next.hidden||index>=levels.length-1)return;index++;play();});
  const unbind=controls?bindTouchControls(controls,(c,a)=>viewport.setControl(c,a)):()=>{};
  window.addEventListener('pointerdown',viewport.unlockAudio,{once:true});restart.addEventListener('click',play);play();
  const onPageHide=(event:PageTransitionEvent)=>{if(event.persisted)return;unbind();viewport.dispose();window.removeEventListener('pagehide',onPageHide);};
  window.addEventListener('pagehide',onPageHide);
-}catch(error){hud.textContent=String(error);restart.disabled=true;pause.disabled=true;}
+}catch(error){hud.textContent=String(error);restart.disabled=true;pause.disabled=true;save.disabled=true;load.disabled=true;}
