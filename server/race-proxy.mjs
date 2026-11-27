@@ -4,7 +4,7 @@ const TTL=30000,MAX_ROOMS=4,MAX_BODY=300000,TICK_MS=1000/60;
 const codePattern=/^[a-f0-9]{8}$/;
 const name=p=>typeof p==='string'&&p.trim().length>0&&p.length<=32&&!/[\u0000-\u001f\u007f]/.test(p);
 const fields={create:['action','name','project'],join:['action','code','name'],input:['action','code','id','token','sequence','input'],snapshot:['action','code','id','token'],leave:['action','code','id','token']};
-export function createRaceRegistry(createMatch,now=Date.now){
+export function createRaceRegistry(createMatch,now=()=>performance.now()){
  const rooms=new Map();
  const fail=(status,error)=>({status,body:{error}}),ok=body=>({status:200,body});
  function pump(){
