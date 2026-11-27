@@ -1,0 +1,23 @@
+name: Refresh lockfile
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - '.github/workflows/refresh-lockfile.yml'
+permissions:
+  contents: read
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-lockfile
+          path: package-lock.json
+          if-no-files-found: error
