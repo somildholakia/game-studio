@@ -37,7 +37,7 @@ export function createRaceRegistry(createMatch,now=()=>performance.now()){
   const m=room?.members.get(p.id);if(!m||typeof p.token!=='string'||m.token!==p.token)return fail(403,'Race membership expired or invalid');
   if(p.action==='leave'){room.members.delete(p.id);room.match.remove(p.id);if(!room.members.size)rooms.delete(p.code);return ok({left:true});}
   if(p.action==='start'&&!room.match.start(p.id))return fail(409,'Only the host can start a shared race with at least two racers');
-  if(p.action==='input'&&!room.match.input(p.id,p.sequence,p.input))return fail(400,'Invalid or stale race input');
+  if(p.action==='input'&&room.match.snapshot().phase!=='finished'&&!room.match.input(p.id,p.sequence,p.input))return fail(400,'Invalid or stale race input');
   m.seen=time;return ok({snapshot:room.match.snapshot()});
  }};
 }
