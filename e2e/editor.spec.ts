@@ -484,3 +484,23 @@ test('local multiplayer room UI exchanges presence through its validated transpo
  const room=page.getByRole('group',{name:'Local multiplayer preview',exact:true});await room.getByRole('button',{name:'Create local room'}).click();await expect(room.getByText(code,{exact:true})).toBeVisible();await expect(room.getByText('Peer',{exact:true})).toBeVisible();expect(updates).toBeGreaterThan(0);
  await room.getByRole('button',{name:'Leave room'}).click();await expect(room.getByRole('button',{name:'Create local room'})).toBeVisible();
 });
+
+test('save and reuse materials with undo and reload',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ box',exact:true}).click();
+ const library=page.getByRole('group',{name:'Material library',exact:true});
+ await library.getByRole('button',{name:'Apply Brushed steel',exact:true}).click();
+ await library.getByLabel('Preset name').fill('My steel');
+ await library.getByRole('button',{name:'Save current material'}).click();
+ await expect(library.getByRole('button',{name:'Apply saved My steel'})).toBeVisible();
+ await page.getByRole('button',{name:'+ sphere',exact:true}).click();
+ await library.getByRole('button',{name:'Apply saved My steel'}).click();
+ await expect(page.getByLabel('Color',{exact:true})).toHaveValue('#a4adb6');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(page.getByLabel('Color',{exact:true})).not.toHaveValue('#a4adb6');
+ await page.getByRole('button',{name:'Redo',exact:true}).click();
+ await expect(page.getByLabel('Color',{exact:true})).toHaveValue('#a4adb6');
+ await expect(page.locator('footer')).toContainText('Saved on this device');
+ await page.reload();
+ await page.getByRole('button',{name:'+ box',exact:true}).click();
+ await expect(library.getByRole('button',{name:'Apply saved My steel'})).toBeVisible();
+});

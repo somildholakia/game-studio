@@ -16,6 +16,7 @@ import {readPatrol,MAX_PLATFORMS,type Patrol} from '../runtime/patrol';
 import {readTexture,readImageTexture,MAX_IMAGE_TEXTURES,type TextureStyle,type ImageTexture} from './textures';
 import {projections,type Projection} from './uv';
 import type {Prefab} from './prefabs';
+import {readMaterialLibrary,type MaterialPreset} from './materialLibrary';
 export type Vec3=[number,number,number];
 export const roles=['decoration','player','solid','collectible','goal','hazard','checkpoint','dynamic','trigger','platform'] as const;
 export type Role=typeof roles[number];
@@ -23,7 +24,7 @@ export const kinds=['box','sphere','ground','cylinder','cone','torus','character
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
 export type MaterialStyle={metallic:number;roughness:number;emissive:string;texture?:TextureStyle;imageTexture?:ImageTexture};
 export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string;body?:BodySettings;patrol?:Patrol;gate?:CounterCondition;uvProjection?:Projection;smoothNormals?:boolean};
-export type Project={version:1;name:string;entities:Entity[];assets?:ModelAsset[];prefabs?:Prefab[];physics?:PhysicsSettings;logic?:Logic;audio?:AudioSettings;environment?:Environment;sceneId?:string;sceneName?:string;levels?:SceneData[];sceneOrder?:string[];presentation?:Presentation;graphics?:GraphicsSettings};
+export type Project={version:1;name:string;entities:Entity[];assets?:ModelAsset[];prefabs?:Prefab[];physics?:PhysicsSettings;logic?:Logic;audio?:AudioSettings;environment?:Environment;sceneId?:string;sceneName?:string;levels?:SceneData[];sceneOrder?:string[];presentation?:Presentation;graphics?:GraphicsSettings;materialPresets?:MaterialPreset[]};
 export function entity(kind:Entity['kind']):Entity {
  return {id:crypto.randomUUID(),name:kind,kind,position:[0,kind==='ground'||kind==='terrain'?0:1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'decoration',...(kind==='terrain'?{terrain:{...defaultTerrain},color:'#527c50'}:{}),...(kind==='mesh'?{mesh:cubeMesh()}:{}),...(kind==='character'?{character:{bodyWidth:1,headSize:1,limbLength:1}}:{})};
 }
@@ -71,5 +72,5 @@ export function parseProject(raw:string):Project {
  if(!Array.isArray(input)||input.length>1000)throw Error('Invalid prefab library');
  const prefabs:Prefab[]=input.map((f:any)=>{if(!f||typeof f.id!=='string'||!f.id||f.id.length>200||prefabIds.has(f.id)||typeof f.name!=='string'||f.name.length>200)throw Error('Invalid prefab');prefabIds.add(f.id);const source=readEntity(f.source);if(source.role==='player')source.role='decoration';delete source.prefabId;return {id:f.id,name:f.name,source};});
  const prefabMap=new Map(prefabs.map(f=>[f.id,f.source.kind]));for(const e of [...entities,...levels.flatMap(l=>l.entities)])if(e.prefabId&&prefabMap.get(e.prefabId)!==e.kind)throw Error('Missing or incompatible prefab reference');
- return {version:1,name:p.name,entities,assets,prefabs,physics:readPhysics(p.physics),logic:readLogic(p.logic),audio:readLevelAudio(p.audio),environment:readEnvironment(p.environment),presentation:readPresentation(p.presentation),graphics:readGraphics(p.graphics),...(p.sceneId!==undefined||p.sceneName!==undefined||p.levels!==undefined||p.sceneOrder!==undefined?{sceneId,sceneName,levels,sceneOrder}:{})};
+ return {version:1,name:p.name,entities,assets,prefabs,...(p.materialPresets!==undefined?{materialPresets:readMaterialLibrary(p.materialPresets)}:{}),physics:readPhysics(p.physics),logic:readLogic(p.logic),audio:readLevelAudio(p.audio),environment:readEnvironment(p.environment),presentation:readPresentation(p.presentation),graphics:readGraphics(p.graphics),...(p.sceneId!==undefined||p.sceneName!==undefined||p.levels!==undefined||p.sceneOrder!==undefined?{sceneId,sceneName,levels,sceneOrder}:{})};
 }
