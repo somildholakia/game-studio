@@ -59,3 +59,5 @@ Character Studio includes a two-link inverse-kinematics pose authoring control f
 
 ## Multi-client room load regression
 Run `node scripts/room-load.mjs reports/room-load.json` to exercise 32 rooms with eight actual HTTP clients each on an ephemeral loopback server. Eight rounds check every client's exact room membership, reject cross-room credentials and stale updates, test room/member limits and clean up all rooms. The script reports throughput and p95 latency and fails if any update is wrong or p95 exceeds 3 seconds. This is a regression budget for the local presence transport at its configured maximum capacity, not an internet service or synchronized gameplay load certification.
+
+See [reference performance budgets](performance-budgets.md) for the reproducible modeling pipeline, compiled simulation, browser rendering and local network load checks and the separate physical-device validation requirements.
