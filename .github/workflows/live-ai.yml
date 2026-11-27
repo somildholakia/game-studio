@@ -40,9 +40,9 @@ jobs:
           GAME_STUDIO_LIVE_AI: '1'
           GAME_STUDIO_AI_PROVIDER: ${{ inputs.provider }}
           GAME_STUDIO_AI_MODEL: ${{ inputs.model }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ inputs.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          OPENROUTER_API_KEY: ${{ inputs.provider == 'openrouter' && secrets.OPENROUTER_API_KEY || '' }}
+          ANTHROPIC_API_KEY: ${{ inputs.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
         run: npx vitest run scripts/live-ai-evaluation.test.ts
       - uses: actions/upload-artifact@v4
         if: always()
