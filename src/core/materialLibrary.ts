@@ -18,6 +18,7 @@ export function readMaterialLibrary(raw:unknown):MaterialPreset[]{
 }
 export function captureMaterial(name:string,e:Entity):MaterialPreset{
  if(e.kind==='model')throw Error('Imported models use their own materials');
+ if(e.shader)throw Error('Restore PBR before saving a material preset');
  return readMaterialPreset({name:name.trim(),color:e.color,material:e.material??{metallic:0,roughness:.65,emissive:'#000000'}});
 }
 export function applyMaterial(e:Entity,preset:MaterialPreset):Entity{

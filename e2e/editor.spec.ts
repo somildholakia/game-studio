@@ -576,3 +576,25 @@ test('edit, persist, remove and bake a non-destructive modifier stack',async({pa
  await panel.getByRole('button',{name:'Bake modifier stack'}).click();await expect(page.getByTestId('mesh-topology-stats')).toBeVisible();
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(panel.getByTestId('modifier-summary')).toBeVisible();
 });
+
+test('GPU shader changes the actual rendered canvas color',async({page})=>{
+ await page.goto('/');
+ const fixture={version:1,name:'Shader render proof',entities:[{id:'proof',kind:'box',name:'Proof cube',position:[0,1,0],rotation:[0,0,0],scale:[2,2,2],color:'#335577',role:'decoration'}]};
+ await page.locator('header input[type=file]').setInputFiles({name:'shader-proof.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
+ await page.getByRole('button',{name:'Proof cube',exact:true}).click();
+ const graph=page.getByRole('group',{name:'Shader Studio · GPU surface graph'});
+ const magentaPixels=async()=>{
+  const png=(await page.locator('canvas').screenshot()).toString('base64');
+  return page.evaluate(async png=>{
+   const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
+   const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);
+   const data=ctx.getImageData(0,0,c.width,c.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(data[i]>220&&data[i+1]<40&&data[i+2]>220)count++;return count;
+  },png);
+ };
+ const before=await magentaPixels();
+ await graph.getByLabel('Shader graph JSON').fill(JSON.stringify({version:1,nodes:[{kind:'color',color:'#ff00ff'}]}));
+ await graph.getByRole('button',{name:'Apply shader graph'}).click();
+ await expect.poll(magentaPixels,{timeout:15000}).toBeGreaterThan(before+50);
+ await graph.getByRole('button',{name:'Restore PBR material'}).click();
+ await expect.poll(magentaPixels,{timeout:15000}).toBeLessThan(before+50);
+});

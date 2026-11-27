@@ -1,5 +1,6 @@
 export type ShaderNode={kind:'color';color:string}|{kind:'base'}|{kind:'gradient';a:number;b:number;axis:'x'|'y'|'z';scale:number}|{kind:'bands';a:number;b:number;axis:'x'|'y'|'z';scale:number}|{kind:'mix';a:number;b:number;factor:number}|{kind:'multiply';a:number;b:number};
 export type ShaderGraph={version:1;nodes:ShaderNode[]};
+export const MAX_SHADER_GRAPHS=64;
 const hex=(v:unknown):v is string=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
 export function readShaderGraph(raw:unknown):ShaderGraph{
  const g=raw as ShaderGraph;
