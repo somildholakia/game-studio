@@ -26,3 +26,21 @@ describe('server-authoritative independent-lane race',()=>{
  });
  it('rejects a level without a spawn and oversized projects',()=>{expect(()=>createRaceMatch(JSON.stringify({...project(),entities:[]}))).toThrow();expect(()=>createRaceMatch(' '.repeat(256001))).toThrow();});
 });
+
+describe('shared collectible race',()=>{
+ it('starts only with host and two racers, claims each pickup once and freezes on first winner',()=>{
+  const match=createRaceMatch(JSON.stringify(project()),'shared');
+  expect(match.add(a,'A')).toBe(true);expect(match.start(a)).toBe(false);expect(match.add(b,'B')).toBe(true);
+  expect(match.input(a,0,input)).toBe(false);match.step(8);expect(match.snapshot().tick).toBe(0);
+  expect(match.start(b)).toBe(false);expect(match.start(a)).toBe(true);expect(match.add('ffffffffffffffff','Late')).toBe(false);
+  expect(match.input(a,0,input)).toBe(true);expect(match.input(b,0,input)).toBe(true);
+  for(let i=0;i<60;i++){if(i===30&&match.snapshot().phase==='running'){match.input(a,1,input);match.input(b,1,input);}match.step();}
+  const snap=match.snapshot();expect(snap.phase).toBe('finished');expect(snap.winnerId).toBe(a);expect(snap.collectedIds).toHaveLength(1);
+  expect(snap.racers.map(r=>r.claimed)).toEqual([1,0]);expect(snap.racers.map(r=>r.collected)).toEqual([1,1]);expect(snap.racers.filter(r=>r.won)).toHaveLength(1);
+  match.step(8);expect(match.snapshot()).toEqual(snap);
+ });
+ it('passes host ownership in the lobby and rejects unsupported shared world features',()=>{
+  const match=createRaceMatch(JSON.stringify(project()),'shared');match.add(a,'A');match.add(b,'B');match.remove(a);expect(match.snapshot().hostId).toBe(b);expect(match.start(b)).toBe(false);
+  const p=project();p.entities.push({...entity('box'),role:'dynamic'});expect(()=>createRaceMatch(JSON.stringify(p),'shared')).toThrow();
+ });
+});
