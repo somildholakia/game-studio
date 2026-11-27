@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {entity,type Project} from '../core/project';
+import {indexBounds,type Bounds} from './collision';
 import {compileBodies,initialBodies,advanceBodies,defaultBody,readBody} from './bodies';
 const fixture=()=>({version:1,name:'Physics',entities:[{...entity('box'),role:'dynamic',position:[0,4,0],body:{...defaultBody,restitution:0}}]} as Project);
 const floor={center:[0,0,0] as [number,number,number],half:[10,0,10] as [number,number,number]};
@@ -11,3 +12,5 @@ import {parseProject} from '../core/project';
 import {physicsTemplate} from '../core/templates';
 it('moves a crate under player pushing while preserving authored data',()=>{const p:Project={version:1,name:'Push',entities:[{...entity('box'),role:'player',position:[0,.75,0]},{...entity('box'),id:'crate',role:'dynamic',position:[2,.75,0],body:{...defaultBody,mass:.5,friction:1,restitution:0}}]};const before=JSON.stringify(p);let s=begin(p);for(let i=0;i<60;i++)s=step(p,s,{x:1,z:0},.05);expect(s.bodies.get('crate')!.position[0]).toBeGreaterThan(3);expect(JSON.stringify(p)).toBe(before);});
 it('round trips the physics playground and rejects excess or invalid bodies',()=>{const p=physicsTemplate();const parsed=parseProject(JSON.stringify(p));expect(parsed.entities.find(e=>e.role==='dynamic')?.body?.mass).toBe(.6);expect(parsed.entities.find(e=>e.role==='hazard')?.patrol?.period).toBe(5);const bad:Project={...p,entities:Array.from({length:65},()=>({...entity('box'),role:'dynamic' as const}))};expect(()=>parseProject(JSON.stringify(bad))).toThrow();});
+
+it('uses indexed static bounds for dynamic body sweeps without changing results',()=>{const p=fixture();p.entities[0].position=[0,.75,0];p.entities[0].body={...defaultBody,restitution:0,friction:0,velocity:[10,0,0]};const specs=compileBodies(p);let a=initialBodies(specs),b=initialBodies(specs);const solids:Bounds[]=[{center:[3,1,0],half:[.75,1,.75]},...Array.from({length:200},(_,i)=>({center:[i*10+100,1,0] as [number,number,number],half:[1,1,1] as [number,number,number]}))];const index=indexBounds(solids);for(let i=0;i<120;i++){a=advanceBodies(specs,a,solids,[floor],[],20,-30,1/120,player,[0,0,0]);b=advanceBodies(specs,b,index,[floor],[],20,-30,1/120,player,[0,0,0]);}expect(b).toEqual(a);});

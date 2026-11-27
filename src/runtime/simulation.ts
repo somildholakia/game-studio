@@ -1,5 +1,5 @@
 import type {Project,Vec3} from '../core/project';
-import {bounds,overlaps,moveAxis,type Bounds} from './collision';
+import {bounds,overlaps,moveAxis,indexBounds,combineBounds,type Bounds} from './collision';
 import {defaultLogic,trigger,matchesCounter,type LogicState,type CounterCondition} from './rules';
 import {compileTerrain} from '../core/terrain';
 import {compileBodies,initialBodies,advanceBodies,bodyBounds,type BodyStates} from './bodies';
@@ -28,7 +28,7 @@ export function compileWorld(project:Project){
  const hazards=project.entities.filter(e=>e.role==='hazard').map(triggerSpec);
  const zones=project.entities.filter(e=>e.role==='trigger').map(e=>({id:e.id,bounds:bounds(e)}));
  const checkpoints=project.entities.filter(e=>e.role==='checkpoint').map(e=>({id:e.id,bounds:bounds(e)}));
- return {spawn:spawn.position,half,solids,gates,floors,terrains,pickups,goals,bodies,hazards,checkpoints,zones,settings:project.physics??defaults,logic:project.logic??defaultLogic};
+ return {spawn:spawn.position,half,solids,solidIndex:indexBounds(solids),gates,floors,terrains,pickups,goals,bodies,hazards,checkpoints,zones,settings:project.physics??defaults,logic:project.logic??defaultLogic};
 }
 type World=ReturnType<typeof compileWorld>;
 function updateGates(world:World,logic:LogicState,previous:ReadonlySet<string>,player:Bounds,bodies:BodyStates):ReadonlySet<string>{
@@ -39,9 +39,9 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  const queued=jump?(settings.jumpBuffer??0):state.bufferRemaining;
  const jumped=(jump||queued>0)&&(state.grounded||state.coyoteRemaining>0);
  const length=Math.max(1,Math.hypot(input.x,input.z));const speed=settings.moveSpeed*dt/length;
- const staticSolids=[...world.solids,...world.gates.filter(g=>!state.openGates.has(g.id)).map(g=>g.bounds)];
+ const staticSolids=combineBounds(world.solidIndex,world.gates.filter(g=>!state.openGates.has(g.id)).map(g=>g.bounds));
  const bodies=world.bodies.length?advanceBodies(world.bodies,state.bodies,staticSolids,floors,terrains,settings.gravity,settings.fallLimit,dt,{center:p,half},[input.x*speed/dt,0,input.z*speed/dt]):state.bodies;
- const solids=world.bodies.length?[...staticSolids,...world.bodies.map(spec=>bodyBounds(spec,bodies.get(spec.id)!))]:staticSolids;
+ const solids=world.bodies.length?combineBounds(staticSolids,world.bodies.map(spec=>bodyBounds(spec,bodies.get(spec.id)!))):staticSolids;
  p[0]=moveAxis(p,half,0,input.x*speed,solids).position;
  p[2]=moveAxis(p,half,2,input.z*speed,solids).position;
  // Follow the terrain surface only when already grounded on it, or crossing it from above.

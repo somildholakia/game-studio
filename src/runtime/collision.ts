@@ -26,9 +26,39 @@ const EPS=1e-6;
 export function overlaps(a:Vec3,ah:Vec3,b:Bounds,axes:readonly number[]=[0,1,2]):boolean{
  return axes.every(i=>Math.abs(a[i]-b.center[i])<ah[i]+b.half[i]-EPS);
 }
-export function moveAxis(p:Vec3,half:Vec3,axis:0|1|2,delta:number,solids:readonly Bounds[]):{position:number;hit:boolean}{
+export type Axis=0|1|2;
+export type BoundsIndex={query:(p:Vec3,half:Vec3,axis:Axis,delta:number)=>readonly Bounds[]};
+export type BoundsSource=readonly Bounds[]|BoundsIndex;
+const CELL_SIZE=8,MAX_INSERT_CELLS=64,MAX_QUERY_CELLS=512;
+const cell=(n:number)=>Math.floor(n/CELL_SIZE);
+function cells(min:Vec3,max:Vec3,limit:number,visit:(key:string)=>void):boolean{
+ const low=min.map(cell),high=max.map(cell),count=(high[0]-low[0]+1)*(high[1]-low[1]+1)*(high[2]-low[2]+1);
+ if(!Number.isSafeInteger(count)||count<1||count>limit||![...low,...high].every(Number.isSafeInteger))return false;
+ for(let x=low[0];x<=high[0];x++)for(let y=low[1];y<=high[1];y++)for(let z=low[2];z<=high[2];z++)visit(x+':'+y+':'+z);
+ return true;
+}
+/** Immutable broad phase: preserves authored ordering, with bounded work and conservative fallbacks. */
+export function indexBounds(bounds:readonly Bounds[]):BoundsIndex{
+ const buckets=new Map<string,number[]>(),large:number[]=[];
+ bounds.forEach((b,i)=>{
+  const min=b.center.map((n,j)=>n-b.half[j]-EPS) as Vec3,max=b.center.map((n,j)=>n+b.half[j]+EPS) as Vec3;
+  if(!cells(min,max,MAX_INSERT_CELLS,key=>{const list=buckets.get(key);if(list)list.push(i);else buckets.set(key,[i]);}))large.push(i);
+ });
+ return {query(p,half,axis,delta){
+  const min=p.map((n,j)=>n-half[j]-EPS+(j===axis?Math.min(0,delta):0)) as Vec3;
+  const max=p.map((n,j)=>n+half[j]+EPS+(j===axis?Math.max(0,delta):0)) as Vec3;
+  const ids=new Set(large);
+  if(!cells(min,max,MAX_QUERY_CELLS,key=>{for(const id of buckets.get(key)??[])ids.add(id);}))return bounds;
+  return [...ids].sort((a,b)=>a-b).map(i=>bounds[i]);
+ }};
+}
+export function combineBounds(source:BoundsSource,extra:readonly Bounds[]):BoundsSource{
+ if(!extra.length)return source;
+ return 'query' in source?{query:(p,half,axis,delta)=>[...source.query(p,half,axis,delta),...extra]}:[...source,...extra];
+}
+export function moveAxis(p:Vec3,half:Vec3,axis:Axis,delta:number,solids:BoundsSource):{position:number;hit:boolean}{
  let target=p[axis]+delta;const other=[0,1,2].filter(i=>i!==axis);
- for(const b of solids){
+ for(const b of ('query' in solids?solids.query(p,half,axis,delta):solids)){
  if(!overlaps(p,half,b,other))continue;
  const min=b.center[axis]-b.half[axis]-half[axis],max=b.center[axis]+b.half[axis]+half[axis];
  if(delta>0&&p[axis]<=min+EPS&&target>min)target=Math.min(target,min);

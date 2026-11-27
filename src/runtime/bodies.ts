@@ -1,5 +1,5 @@
 import type {Project,Vec3} from '../core/project';
-import {bounds,moveAxis,overlaps,type Bounds} from './collision';
+import {bounds,moveAxis,overlaps,combineBounds,type Bounds,type BoundsSource} from './collision';
 export type BodySettings={mass:number;restitution:number;friction:number;velocity:Vec3};
 export const defaultBody:BodySettings={mass:1,restitution:.2,friction:4,velocity:[0,0,0]};
 export const MAX_BODIES=64;
@@ -20,12 +20,12 @@ export function compileBodies(p:Project):BodySpec[]{
 export function initialBodies(specs:readonly BodySpec[]):BodyStates{return new Map(specs.map(b=>[b.id,{position:[...b.bounds.center],velocity:[...b.settings.velocity]}]));}
 export function bodyBounds(spec:BodySpec,state:BodyState):Bounds{return {center:state.position,half:spec.bounds.half};}
 type Surface={height(x:number,z:number):number|null};
-export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,solids:readonly Bounds[],floors:readonly Bounds[],terrains:readonly Surface[],gravity:number,fallLimit:number,dt:number,player:Bounds,push:Vec3):BodyStates{
+export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,solids:BoundsSource,floors:readonly Bounds[],terrains:readonly Surface[],gravity:number,fallLimit:number,dt:number,player:Bounds,push:Vec3):BodyStates{
  const next=new Map<string,BodyState>();for(const spec of specs){const b=previous.get(spec.id)!;next.set(spec.id,{position:[...b.position],velocity:[...b.velocity]});}
  for(const spec of specs){
  const b=next.get(spec.id)!,half=spec.bounds.half,settings=spec.settings;
  const other=specs.filter(s=>s.id!==spec.id).map(s=>bodyBounds(s,next.get(s.id)!));
- const obstacles=[...solids,...other,player];
+ const obstacles=combineBounds(solids,[...other,player]);
  // Contact-driven horizontal force; player remains a kinematic controller.
  if(overlaps(b.position,half,{center:[player.center[0]+push[0]*dt,player.center[1],player.center[2]+push[2]*dt],half:player.half})){
  for(const axis of [0,2] as const){if(push[axis]*(b.position[axis]-player.center[axis])>0)b.velocity[axis]=Math.max(-20,Math.min(20,b.velocity[axis]+push[axis]*dt*12/settings.mass));}
