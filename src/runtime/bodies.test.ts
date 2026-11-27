@@ -34,3 +34,16 @@ it('dissipates tangential contact velocity without increasing pair momentum or e
  expect(va[0]).toBeCloseTo(2);expect(vb[0]).toBeCloseTo(2);expect(va[2]).toBeCloseTo(1);expect(vb[2]).toBeCloseTo(1);expect(va[2]+vb[2]).toBeCloseTo(2);
  expect(va.reduce((n,v)=>n+v*v,0)+vb.reduce((n,v)=>n+v*v,0)).toBeLessThan(20);
 });
+
+it('persists angular settings and integrates a free spinning box without mutating authored state',()=>{
+ const p=fixture();p.entities[0].body={...defaultBody,angular:{velocity:[0,0,Math.PI],damping:0}};
+ p.entities[0].scale=[2,1,1];const parsed=parseProject(JSON.stringify(p));const specs=compileBodies(parsed),initial=initialBodies(specs);let state=initial;
+ for(let i=0;i<60;i++)state=advanceBodies(specs,state,[],[],[],0,-30,1/120,noContactPlayer,[0,0,0]);
+ const body=state.get(specs[0].id)!;expect(body.angular).toBeDefined();expect(Math.hypot(...body.angular!.orientation)).toBeCloseTo(1);expect(body.angular!.orientation[2]).toBeCloseTo(Math.SQRT1_2);expect(initial.get(specs[0].id)!.angular!.orientation).toEqual([0,0,0,1]);
+ expect(()=>readBody({...defaultBody,angular:{velocity:[0,0,21],damping:0}})).toThrow();
+});
+it('transfers floor friction into spin for opt-in rolling spheres',()=>{
+ const p=fixture();p.entities[0].kind='sphere';p.entities[0].position=[0,.75,0];p.entities[0].body={...defaultBody,velocity:[3,0,0],friction:20,restitution:0,angular:{velocity:[0,0,0],damping:0}};
+ const specs=compileBodies(p);let state=initialBodies(specs);for(let i=0;i<120;i++)state=advanceBodies(specs,state,[],[floor],[],20,-30,1/120,noContactPlayer,[0,0,0]);
+ const b=state.get(specs[0].id)!;expect(b.position[1]).toBeCloseTo(.75);expect(b.angular!.angularVelocity[2]).toBeLessThan(-1);expect(b.velocity[0]).toBeLessThan(3);expect(b.velocity[0]+.75*b.angular!.angularVelocity[2]).toBeCloseTo(0,3);
+});
