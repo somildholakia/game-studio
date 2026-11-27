@@ -1,4 +1,4 @@
-import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,MeshBuilder,StandardMaterial,Color3,type AssetContainer} from '@babylonjs/core';
+import {Engine,Scene,ArcRotateCamera,Vector3,Quaternion,Mesh,MeshBuilder,StandardMaterial,Color3,type AssetContainer} from '@babylonjs/core';
 import {createShadows} from './shadows';
 import {defaultGraphics,type GraphicsSettings,type RenderMetrics} from '../core/graphics';
 import {createRuntimeProfiler} from '../core/runtimeProfile';
@@ -82,7 +82,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const dt=delta;const before=run.state;const simStart=profile?performance.now():0;if(race){const {snapshot,id}=race,me=snapshot.racers.find(r=>r.id===id)!;run.state={...before,position:[...me.position],collected:new Set(snapshot.collectedIds),elapsed:me.elapsed,respawns:me.respawns,won:me.won,logic:{score:me.score,message:snapshot.phase==='finished'?(me.won?'Race won':'Race finished'):snapshot.phase==='lobby'?'Waiting for host':'',won:me.won,lost:snapshot.phase==='finished'&&!me.won}};}else run.state=advance(run.world,run.state,input,dt);if(profile)simulationMs=performance.now()-simStart;const sound=run.project.audio??defaultAudio;
  if(run.state.respawns>before.respawns)audio.play(sound,'respawn');else if(run.state.collected.size>before.collected.size)audio.play(sound,'collect');if(run.state.jumps>before.jumps)audio.play(sound,'jump');if(!before.won&&run.state.won)audio.play(sound,'win');if(!before.logic.lost&&run.state.logic.lost)audio.play(sound,'lose');if(before.checkpointId!==run.state.checkpointId)audio.play(sound,'checkpoint');applyAnimation(run.project,run.state.elapsed);
  const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.state.elapsed,moving,run.state.grounded);}}
- for(const [id,body] of run.state.bodies)meshes.get(id)?.mesh.position.set(...body.position);
+ for(const [id,body] of run.state.bodies){const mesh=meshes.get(id)?.mesh;if(mesh){mesh.position.set(...body.position);if(body.angular){const q=mesh.rotationQuaternion??new Quaternion();q.set(...body.angular.orientation);mesh.rotationQuaternion=q;}}}
  camera.setTarget(new Vector3(...run.state.position));
  for(const gate of run.world.gates)meshes.get(gate.id)?.mesh.setEnabled(!run.state.openGates.has(gate.id));
  for(const item of [...run.world.pickups,...run.world.hazards,...run.world.platforms]){const mesh=meshes.get(item.id)?.mesh;if(item.patrol)mesh?.position.set(...triggerBounds(item,run.state.elapsed).center);if(run.state.collected.has(item.id))mesh?.setEnabled(false);else mesh?.setEnabled(true);}
