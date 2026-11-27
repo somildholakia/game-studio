@@ -77,3 +77,9 @@ it('reviews box trigger zones and rejects incompatible zone event sources',()=>{
  const result=previewPlan(p,plan([{op:'edit',id,patch:{role:'trigger'}},{op:'logic',value}]));expect(result.next.entities[1].role).toBe('trigger');
  expect(()=>previewPlan(p,plan([{op:'logic',value}]))).toThrow('incompatible');
 });
+
+it('validates optional platforming input aids in reviewed physics plans',()=>{
+ const p=initialProject(),value={gravity:20,moveSpeed:4,jumpSpeed:7,fallLimit:-30,coyoteTime:.1,jumpBuffer:.15};
+ expect(previewPlan(p,plan([{op:'physics',value}])).next.physics).toEqual(value);
+ for(const patch of [{coyoteTime:.31},{jumpBuffer:-1},{jumpBuffer:'0.1'}])expect(()=>previewPlan(p,plan([{op:'physics',value:{...value,...patch}}]))).toThrow();
+});

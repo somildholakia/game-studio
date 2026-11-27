@@ -140,3 +140,26 @@ it('clears zone occupancy on respawn and does not dispatch synthetic exits',()=>
  s=step(p,{...s,position:[0,-1000,0]},{x:0,z:0},.005);expect(s.insideZoneIds.size).toBe(0);expect(s.logic.score).toBe(0);
  s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(1);
 });
+
+it('allows a coyote jump just after leaving a platform but never a second aerial jump',()=>{
+ const p:Project={version:1,name:'Grace',entities:[{...entity('box'),role:'player',position:[0,.75,0]}, {...entity('ground'),scale:[.1,1,.1]}],physics:{gravity:20,moveSpeed:4,jumpSpeed:7,fallLimit:-30,coyoteTime:.15}};
+ let s=step(p,begin(p),{x:0,z:0},.05);expect(s.grounded).toBe(true);
+ for(let i=0;i<20&&s.grounded;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.grounded).toBe(false);expect(s.coyoteRemaining).toBeGreaterThan(0);
+ s=step(p,s,{x:0,z:0,jump:true},.01);expect(s.velocityY).toBeGreaterThan(0);expect(s.jumps).toBe(1);
+ s=step(p,s,{x:0,z:0},.01);s=step(p,s,{x:0,z:0,jump:true},.01);expect(s.jumps).toBe(1);
+});
+it('buffers a single early jump press until landing, then consumes it',()=>{
+ const p:Project={version:1,name:'Buffer',entities:[{...entity('box'),role:'player',position:[0,.85,0]}],physics:{gravity:20,moveSpeed:4,jumpSpeed:7,fallLimit:-30,jumpBuffer:.2}};
+ let s=step(p,begin(p),{x:0,z:0,jump:true},.02);expect(s.jumps).toBe(0);expect(s.bufferRemaining).toBeGreaterThan(0);
+ for(let i=0;i<10&&s.jumps===0;i++)s=step(p,s,{x:0,z:0,jump:true},.02);
+ expect(s.jumps).toBe(1);expect(s.velocityY).toBeGreaterThan(0);expect(s.bufferRemaining).toBe(0);
+ for(let i=0;i<60;i++)s=step(p,s,{x:0,z:0,jump:true},.02);expect(s.jumps).toBe(1);
+});
+it('expires buffered presses and clears both aids on respawn',()=>{
+ const p:Project={version:1,name:'Expiry',entities:[{...entity('box'),role:'player',position:[0,3,0]}],physics:{gravity:20,moveSpeed:4,jumpSpeed:7,fallLimit:-30,jumpBuffer:.05,coyoteTime:.1}};
+ let s=step(p,begin(p),{x:0,z:0,jump:true},.02);for(let i=0;i<35;i++)s=step(p,s,{x:0,z:0,jump:true},.02);
+ expect(s.jumps).toBe(0);expect(s.bufferRemaining).toBe(0);
+ s=step(p,{...s,position:[0,-1000,0],bufferRemaining:.05,coyoteRemaining:.1},{x:0,z:0},.005);
+ expect(s.bufferRemaining).toBe(0);expect(s.coyoteRemaining).toBe(0);
+});

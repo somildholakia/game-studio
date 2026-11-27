@@ -1,3 +1,4 @@
+import {defaults} from '../runtime/physicsSettings';
 import {environmentPresets} from './environment';
 import {compileTerrain,defaultTerrain} from './terrain';
 import {entity,type Entity,type Project,type Vec3} from './project';
@@ -18,7 +19,7 @@ export function treasureTemplate():Project {
 }
 
 export function platformTemplate():Project{
- return {version:1,name:'Sky Steps',entities:[
+ return {version:1,name:'Sky Steps',physics:{...defaults,coyoteTime:.12,jumpBuffer:.12},entities:[
  placed('ground','decoration','Start island',[0,0,0],'#355d52',[.35,1,.35]),
  placed('character','player','Explorer',[0,.8,0],'#67b9fa'),
  placed('box','solid','Step 1',[0,.25,3],'#7d90bc',[2,.5,1.4]),
