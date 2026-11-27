@@ -83,3 +83,9 @@ it('validates optional platforming input aids in reviewed physics plans',()=>{
  expect(previewPlan(p,plan([{op:'physics',value}])).next.physics).toEqual(value);
  for(const patch of [{coyoteTime:.31},{jumpBuffer:-1},{jumpBuffer:'0.1'}])expect(()=>previewPlan(p,plan([{op:'physics',value:{...value,...patch}}]))).toThrow();
 });
+
+it('accepts validated decorative character joint animation in AI plans',async()=>{
+ const {defaultRig,neutralPose}=await import('../core/characterRig');const p=initialProject();const rig={...defaultRig,clip:{loop:true,keys:[{time:0,pose:neutralPose},{time:1,pose:{...neutralPose,leftShoulder:45}}]}};
+ const preview=previewPlan(p,plan([{op:'add',kind:'character',patch:{name:'Animated NPC',rig}}]));expect(preview.next.entities.at(-1)?.rig?.clip).toEqual(rig.clip);
+ expect(()=>previewPlan(p,plan([{op:'add',kind:'character',patch:{rig:{...rig,clip:{loop:true,keys:[{time:1,pose:neutralPose}]}}}}]))).toThrow();
+});

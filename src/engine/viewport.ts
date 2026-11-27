@@ -2,7 +2,7 @@ import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,MeshBuilder,StandardMaterial,C
 import {createShadows} from './shadows';
 import {defaultGraphics,type GraphicsSettings,type RenderMetrics} from '../core/graphics';
 import {defaultPresentation} from '../core/presentation';
-import {syncCharacterRig,animateCharacterRig} from './characterRig';
+import {syncCharacterRig,animateCharacterRig,animateDecorativeRig} from './characterRig';
 import {createEnvironment} from './environment';
 import {createGizmos,type Tool,type Transform} from './gizmos';
 import {createMaterial,updateMaterial} from './material';
@@ -52,7 +52,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);updateMaterial(m,e);if(e.kind==='character')syncCharacterRig(m,e);}
  refreshShadows();refreshGizmo();
  }
- function applyAnimation(project:Project,time:number){for(const e of project.entities){if(!e.animation||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
+ function applyAnimation(project:Project,time:number){for(const e of project.entities){if((!e.animation&&!e.rig?.clip)||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;if(e.kind==='character')animateDecorativeRig(m,e.rig,time,previewing);if(!e.animation)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
  const render=()=>{
  if(run&&!paused){
  const pad=pollGamepad(()=>document.hidden?[]:navigator.getGamepads?.()??[]);

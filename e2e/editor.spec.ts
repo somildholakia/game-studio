@@ -414,3 +414,16 @@ test('create an invisible trigger zone and fire its scoped entry event',async({p
  await rule.getByLabel('Do').selectOption('message');await rule.getByLabel('Message',{exact:true}).fill('Welcome to the zone');
  await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.getByRole('status')).toContainText('Welcome to the zone');
 });
+
+test('capture decorative character joint animation and preserve it across reload',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ character',exact:true}).click();
+ const timeline=page.getByRole('group',{name:'Joint animation timeline',exact:true});
+ await timeline.getByRole('button',{name:'Create joint animation',exact:true}).click();
+ await page.getByRole('slider',{name:/leftShoulder/}).fill('45');await timeline.getByRole('button',{name:'Capture joint pose',exact:true}).click();
+ await expect(timeline.getByText('1.00s',{exact:true})).toBeVisible();
+ await timeline.getByRole('button',{name:'Preview joints',exact:true}).click();
+ await expect(timeline.getByRole('button',{name:'Stop joint preview',exact:true})).toBeVisible();
+ await timeline.getByRole('button',{name:'Stop joint preview',exact:true}).click();
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.getByRole('button',{name:'character',exact:true}).click();
+ await expect(page.getByRole('group',{name:'Joint animation timeline',exact:true}).getByText('1.00s',{exact:true})).toBeVisible();
+});

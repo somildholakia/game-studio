@@ -1,5 +1,5 @@
 import {Mesh,MeshBuilder,TransformNode,type Scene} from '@babylonjs/core';
-import {defaultRig,motionPose,type Joint,type JointPose,type CharacterRig} from '../core/characterRig';
+import {defaultRig,motionPose,sampleJointClip,type Joint,type JointPose,type CharacterRig} from '../core/characterRig';
 import type {Entity} from '../core/project';
 import {createMaterial,updateMaterial} from './material';
 type Channel='skin'|'hair'|'clothing'|'shoes'|'shirt';
@@ -31,3 +31,5 @@ export function createCharacterRig(e:Entity,scene:Scene):Mesh{
 function poseRig(root:Mesh,pose:JointPose){const r=rigs.get(root);if(!r)return;for(const [joint,node] of Object.entries(r.joints))node.rotation.x=pose[joint as Joint]*Math.PI/180;}
 export function syncCharacterRig(root:Mesh,e:Entity){const r=rigs.get(root);if(!r)return;const style=e.rig??defaultRig;for(const part of r.parts)updateMaterial(part.mesh,{...e,color:part.channel==='shirt'?e.color:style[part.channel]});poseRig(root,style.pose);}
 export function animateCharacterRig(root:Mesh,style:CharacterRig|undefined,time:number,moving:boolean,grounded:boolean){const s=style??defaultRig;if(s.motion)poseRig(root,motionPose(s.pose,time,moving,grounded));else poseRig(root,s.pose);}
+
+export function animateDecorativeRig(root:Mesh,style:CharacterRig|undefined,time:number,preview:boolean){const clip=style?.clip;if(clip)poseRig(root,sampleJointClip(preview?{...clip,loop:false}:clip,time));}
