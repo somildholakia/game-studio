@@ -1,6 +1,6 @@
 import {performance} from 'node:perf_hooks';
 import {localJsonError} from './local-policy.mjs';
-const routes=['/api/ai/plan','/api/github/project','/api/rooms'];
+const routes=['/api/ai/plan','/api/github/project','/api/rooms','/api/race'];
 const limit=256;
 const entry=()=>({requests:0,active:0,ok:0,clientErrors:0,serverErrors:0,rateLimited:0,aborted:0,times:[],next:0});
 /** Process-local aggregates only. Never retain bodies, URLs, identities or credentials. */
