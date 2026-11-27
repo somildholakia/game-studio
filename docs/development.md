@@ -56,3 +56,6 @@ AI and GitHub gateways now require the exact application/json media type (parame
 
 ## Limb inverse kinematics
 Character Studio includes a two-link inverse-kinematics pose authoring control for each arm and leg. Targets use down/forward coordinates relative to the shoulder or hip, normalized to one limb segment. Choose the bend direction; unreachable targets and angles outside the existing ±120° limits are rejected. Solving changes only the two existing joint angles, so it is undoable, persists and can be captured in a timeline key. Automatic player locomotion can override authored poses during play. This is planar, equal-length procedural rig IK, not arbitrary imported skeleton IK, continuous target tracking or foot planting.
+
+## Multi-client room load regression
+Run `node scripts/room-load.mjs reports/room-load.json` to exercise 32 rooms with eight actual HTTP clients each on an ephemeral loopback server. Eight rounds check every client's exact room membership, reject cross-room credentials and stale updates, test room/member limits and clean up all rooms. The script reports throughput and p95 latency and fails if any update is wrong or p95 exceeds 3 seconds. This is a regression budget for the local presence transport at its configured maximum capacity, not an internet service or synchronized gameplay load certification.

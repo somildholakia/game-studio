@@ -21,6 +21,13 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: node --test scripts/*.test.mjs
+      - run: node scripts/room-load.mjs reports/room-load.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-room-load
+          path: reports/room-load.json
+          if-no-files-found: ignore
       - run: node scripts/static-release.mjs write dist
       - run: node scripts/static-release.mjs verify dist
       - run: npx playwright install --with-deps chromium

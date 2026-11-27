@@ -1,4 +1,5 @@
 import {randomBytes} from 'node:crypto';
+import {localJsonError} from './local-policy.mjs';
 const TTL=30000,MAX_ROOMS=32,MAX_MEMBERS=8,MAX_BODY=4096;
 const position=p=>Array.isArray(p)&&p.length===3&&p.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=1e8);
 const fingerprint=p=>typeof p==='string'&&/^[a-f0-9]{1,12}-[a-f0-9]{8}-[a-f0-9]{8}$/.test(p);
@@ -34,9 +35,7 @@ function send(res,status,body){res.writeHead(status,{'Content-Type':'application
 export function createRoomMiddleware(registry=createRoomRegistry()){
  return (req,res,next)=>{
  if(req.url?.split('?')[0]!=='/api/rooms')return next();
- if(req.method!=='POST')return send(res,405,{error:'POST required'});
- if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress)||!req.headers.host||!['localhost','127.0.0.1','[::1]'].includes(req.headers.host.replace(/:\d+$/,''))||req.headers.origin!=='http://'+req.headers.host)return send(res,403,{error:'Same-origin local access required'});
- if(!req.headers['content-type']?.startsWith('application/json'))return send(res,415,{error:'JSON required'});
+ const denied=localJsonError(req);if(denied)return send(res,denied.status,{error:denied.error});
  void (async()=>{let p;try{const chunks=[];let size=0;for await(const chunk of req){const b=Buffer.from(chunk);size+=b.length;if(size>MAX_BODY)throw Error('limit');chunks.push(b);}p=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return send(res,400,{error:'Invalid or oversized request'});}
  const result=registry.handle(p);send(res,result.status,result.body);})().catch(()=>{if(!res.headersSent)send(res,500,{error:'Local room operation failed'});else res.end();});
  };
