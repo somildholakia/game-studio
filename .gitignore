@@ -7,3 +7,5 @@ src/generated/
 
 playwright-report/
 test-results/
+
+dist-race/

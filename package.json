@@ -6,10 +6,11 @@
   "scripts": {
     "build:player": "vite build --config vite.player.config.ts",
     "dev": "npm run build:player && vite",
-    "build": "npm run build:player && tsc --noEmit && vite build",
+    "build": "npm run build:player && tsc --noEmit && vite build && npm run build:matchmaking",
     "test": "vitest run src",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:matchmaking": "vite build --ssr src/runtime/raceMatch.ts --outDir dist-race"
   },
   "dependencies": {
     "@babylonjs/core": "^8.0.0",
