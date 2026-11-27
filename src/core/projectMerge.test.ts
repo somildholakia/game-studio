@@ -1,0 +1,11 @@
+import {describe,it,expect} from 'vitest';
+import {entity,type Project} from './project';
+import {mergeProjects} from './projectMerge';
+import {addScene,switchScene,orderedScenes} from './scenes';
+const fixture=():Project=>({version:1,name:'Shared',entities:[{...entity('box'),id:'a'},{...entity('sphere'),id:'b'}]});
+describe('three-way collaboration',()=>{
+ it('merges independent entity fields and additions without losing IDs',()=>{const base=fixture(),a=structuredClone(base),b=structuredClone(base);a.entities[0].name='Local name';b.entities[0].color='#ff0000';a.entities.push({...entity('box'),id:'c'});b.entities.push({...entity('box'),id:'d'});const m=mergeProjects(base,a,b);expect(m.conflicts).toEqual([]);expect(m.project?.entities.find(x=>x.id==='a')).toMatchObject({name:'Local name',color:'#ff0000'});expect(new Set(m.project?.entities.map(x=>x.id))).toEqual(new Set(['a','b','c','d']));expect(base.entities[0].name).toBe('box');});
+ it('requires explicit resolution of competing fields and deletion-vs-edit',()=>{const base=fixture(),a=structuredClone(base),b=structuredClone(base);a.entities[0].color='#123456';b.entities[0].color='#abcdef';a.entities.pop();b.entities[1].name='Edited';const m=mergeProjects(base,a,b);expect(m.project).toBeNull();expect(m.conflicts.map(c=>c.path)).toEqual(['/scenes/main/entities/a/color','/scenes/main/entities/b']);const resolved=mergeProjects(base,a,b,Object.fromEntries(m.conflicts.map(c=>[c.path,'incoming'])));expect(resolved.project?.entities[0].color).toBe('#abcdef');expect(resolved.project?.entities[1].name).toBe('Edited');});
+ it('normalizes different selected levels and merges changes across levels',()=>{const base=addScene(fixture(),'Second'),a=switchScene(base,'main'),b=structuredClone(base);a.entities[0].name='Changed first';b.entities[0].name='Changed second';const m=mergeProjects(base,a,b);expect(m.error).toBeUndefined();expect(orderedScenes(m.project!).map(s=>s.entities[0].name)).toEqual(['Changed first','Changed second']);expect(m.project?.sceneId).toBe('main');});
+ it('refuses an otherwise conflict-free merge violating project invariants',()=>{const base=fixture(),a=structuredClone(base),b=structuredClone(base);a.entities[0].role='player';b.entities[1].role='player';const m=mergeProjects(base,a,b);expect(m.project).toBeNull();expect(m.error).toContain('Only one player');});
+});

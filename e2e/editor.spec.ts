@@ -635,3 +635,22 @@ test('retarget another character clip and author a persistent blend',async({page
  await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.getByRole('button',{name:'character',exact:true}).click();
  await expect(blend.getByLabel('Blend weight')).toHaveValue('0.75');await rig.getByRole('button',{name:'Preview blend'}).click();await expect(rig.getByRole('button',{name:'Stop blend preview'})).toBeVisible();
 });
+
+test('review and resolve independent collaborator project changes with undo',async({page})=>{
+ await page.goto('/');
+ const original={version:1,name:'Shared base',entities:[{id:'shared',kind:'box',name:'Shared cube',position:[0,1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'decoration'}]};
+ const local=structuredClone(original);local.entities[0].name='Local cube';local.entities[0].color='#123456';
+ const incoming=structuredClone(original);incoming.entities[0].color='#abcdef';incoming.entities[0].position[0]=4;
+ const file=(name:string,p:unknown)=>({name,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
+ await page.locator('header input[type=file]').setInputFiles(file('local.json',local));
+ const merge=page.getByRole('group',{name:'Collaborative project merge'});await merge.getByText("Merge a teammate's project").click();
+ await merge.getByLabel('Common base project').setInputFiles(file('base.json',original));await merge.getByText('Base: Shared base').waitFor();
+ await merge.getByLabel('Incoming project').setInputFiles(file('incoming.json',incoming));await merge.getByText('Incoming: Shared base').waitFor();
+ await merge.getByRole('button',{name:'Review project merge'}).click();await expect(merge.getByText('1 merge conflicts')).toBeVisible();
+ await expect(merge.getByRole('button',{name:'Apply reviewed merge'})).toBeDisabled();
+ await merge.getByLabel('Resolve /scenes/main/entities/shared/color').selectOption('incoming');
+ await merge.getByRole('button',{name:'Apply reviewed merge'}).click();
+ await page.getByRole('button',{name:'Local cube',exact:true}).click();await expect(page.getByLabel('Color',{exact:true})).toHaveValue('#abcdef');
+ await expect(page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true})).toHaveValue('4');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByLabel('Color',{exact:true})).toHaveValue('#123456');
+});
