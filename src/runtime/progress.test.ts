@@ -8,3 +8,5 @@ describe('portable campaign saves',()=>{
 });
 
 it('normalizes legacy optional defaults before fingerprinting so reopened levels match',()=>{const p=initialProject();expect(projectFingerprint(p)).toBe(projectFingerprint(parseProject(JSON.stringify(p))));});
+
+it('ignores changes to unused authoring material presets when fingerprinting',()=>{const p=initialProject();const saved=makeProgress(p,0);const withPresets={...p,materialPresets:[{name:'Unused',color:'#112233',material:{metallic:0,roughness:.5,emissive:'#000000'}}]};expect(readProgress(JSON.stringify(saved),withPresets)).toBe(0);expect(projectFingerprint({...withPresets,entities:p.entities.map(e=>({...e,color:'#ff0000'}))})).not.toBe(saved.fingerprint);});

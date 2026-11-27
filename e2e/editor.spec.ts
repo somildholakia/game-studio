@@ -504,3 +504,23 @@ test('save and reuse materials with undo and reload',async({page})=>{
  await page.getByRole('button',{name:'+ box',exact:true}).click();
  await expect(library.getByRole('button',{name:'Apply saved My steel'})).toBeVisible();
 });
+
+test('keyboard navigation reaches authoring controls and exposes selection',async({page})=>{
+ await page.goto('/');
+ const workspace=page.getByRole('heading',{name:'Workspace',exact:true});
+ await expect(workspace).toBeVisible();
+ await page.keyboard.press('Tab');
+ await expect(page.getByRole('button',{name:'Focus workspace'})).toBeFocused();
+ await page.keyboard.press('Enter');await expect(workspace).toBeFocused();
+ await page.keyboard.press('Tab');await expect(page.getByRole('navigation',{name:'Workspace sections'}).getByRole('button',{name:'All',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');await page.keyboard.press('Enter');
+ await expect(page.getByRole('navigation',{name:'Workspace sections'}).getByRole('button',{name:'Scene',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.keyboard.press('Tab');await page.keyboard.press('Tab');await page.keyboard.press('Tab');
+ await expect(page.getByRole('button',{name:'+ box',exact:true})).toBeFocused();await page.keyboard.press('Enter');
+ await expect(page.locator('.entity[aria-pressed=true]')).toHaveCount(1);
+ await expect(page.getByRole('group',{name:'box',exact:true}).getByLabel('Name',{exact:true})).toHaveValue('box');
+ await page.getByRole('button',{name:'Focus inspector'}).focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('heading',{name:'Inspector',exact:true})).toBeFocused();
+ await page.getByRole('button',{name:'Focus viewport'}).focus();await page.keyboard.press('Enter');await expect(page.locator('canvas')).toBeFocused();
+ await page.getByRole('button',{name:'Import project',exact:true}).focus();const chooser=page.waitForEvent('filechooser');await page.keyboard.press('Enter');await chooser;
+});

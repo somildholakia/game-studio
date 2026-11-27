@@ -45,3 +45,6 @@ Run npm test, npm run build, npx playwright install chromium, npm run test:e2e. 
 
 ## Reusable material library
 Select an object and use Material library to apply four built-in solid/procedural PBR presets or save the current color, metallic, roughness, emission and procedural texture under a unique name (up to 64 project-wide entries). Apply copies values rather than creating live links. Named presets persist across levels, project JSON and autosave; save, apply and delete are undoable. Imported GLB models keep their original materials; image textures are intentionally excluded from reusable presets to avoid duplicating embedded pixel payloads. Existing per-object image editing remains available.
+
+## Keyboard navigation and playable identity
+Use Tab to reach the three Editor keyboard navigation buttons at the top of the page. They move focus to Workspace, the viewport or Inspector; Tab continues into the respective controls. Scene object buttons expose their selected state, and Import project opens the file picker from Enter or Space. The browser test exercises navigation and object creation; a full screen-reader, keyboard and accessibility audit remains open. Unused material library presets are omitted from playable HTML and excluded from campaign/room fingerprints; applying a material to an object still changes game identity.

@@ -9,7 +9,8 @@ function base64(text:string):string {
 }
 export function buildGameHtml(project:Project):string {
  campaign(project);
- const json=JSON.stringify(project).replace(/</g,'\\u003c');
+ const playable={...project};delete playable.materialPresets;
+ const json=JSON.stringify(playable).replace(/</g,'\\u003c');
  const source=base64(player);
  // Text-only title; the project JSON is separately escaped against script termination.
  const title=(project.name.trim()||'Game Studio Game').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
