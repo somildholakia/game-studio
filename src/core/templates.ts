@@ -63,3 +63,15 @@ export function physicsTemplate():Project{
  placed('box','solid','Wall',[4,.75,-1],'#8397af',[.5,1,3])
  ]};
 }
+
+/** A compact demonstration of platform motion, collecting keys, and counter gates. */
+export function skyTransitTemplate():Project{
+ const key=placed('sphere','collectible','Transit key',[3,1,0],'#ffce54',[.4,.4,.4]);
+ return {version:1,name:'Sky Transit',environment:{...environmentPresets.Day},physics:{...defaults,coyoteTime:.12,jumpBuffer:.12},entities:[
+ placed('ground','decoration','Transit yard',[0,0,0],'#355d52',[1.5,1,1.5]),
+ placed('box','player','Rider',[0,1,0],'#67b9fa',[.5,.8,.5]),
+ {...placed('box','platform','Shuttle',[0,.25,0],'#7099d0',[2,.2,2]),patrol:{offset:[6,0,0],period:8}},key,
+ {...placed('box','solid','Key gate',[4.5,1,0],'#bd7953',[.15,1,2]),gate:{key:'keys',comparison:'gte',value:1}},
+ placed('box','goal','Arrival',[6,1,0],'#53dc88',[.5,.5,.5])
+ ],logic:{autoWin:true,rules:[{id:crypto.randomUUID(),event:'start',minScore:0,action:{kind:'message',text:'Ride the shuttle to collect the key and reach the arrival point.'}},{id:crypto.randomUUID(),event:'collect',sourceId:key.id,minScore:0,action:{kind:'counter',key:'keys',mode:'add',amount:1}},{id:crypto.randomUUID(),event:'collect',sourceId:key.id,minScore:0,action:{kind:'message',text:'Key collected! Gate unlocked.'}}]}};
+}

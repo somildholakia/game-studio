@@ -204,3 +204,6 @@ describe('moving one-way platforms',()=>{
  it('supports ascending and descending elevators',()=>{const p=stage([0,2,0],2);let s=begin(p);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.platformId).toBe('ride');expect(s.position[1]).toBeCloseTo(3.9);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.platformId).toBe('ride');expect(s.position[1]).toBeCloseTo(1.9);});
  it('does not block horizontal motion beneath the support',()=>{const p=stage([0,0,0]);p.entities[0].position=[-3,.75,0];p.entities[1].position=[0,3,0];let s=begin(p);for(let i=0;i<30;i++)s=step(p,s,{x:1,z:0},.05);expect(s.position[0]).toBeGreaterThan(2);expect(s.platformId).toBeNull();});
 });
+
+import {skyTransitTemplate} from '../core/templates';
+it('completes Sky Transit by riding the shuttle, collecting its key and opening the gate',()=>{const p=skyTransitTemplate();const gate=p.entities.find(e=>e.gate)!;let s=begin(p);expect(s.openGates.has(gate.id)).toBe(false);for(let i=0;i<100&&!s.won;i++)s=step(p,s,{x:0,z:0},.05);expect(s.logic.counters?.keys).toBe(1);expect(s.openGates.has(gate.id)).toBe(true);expect(s.won).toBe(true);});

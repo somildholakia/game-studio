@@ -101,3 +101,5 @@ it('allows custom mesh solids but not dynamic custom meshes',()=>{
 });
 
 it('validates smooth mesh shading in AI plans',()=>{const p=initialProject();expect(previewPlan(p,plan([{op:'add',kind:'mesh',patch:{smoothNormals:true}}])).next.entities.at(-1)?.smoothNormals).toBe(true);expect(()=>previewPlan(p,plan([{op:'add',kind:'mesh',patch:{smoothNormals:1}}]))).toThrow();});
+
+it('accepts moving box platforms but rejects unsupported geometry',()=>{const patch={role:'platform',patrol:{offset:[3,0,0],period:4}};const p=initialProject();expect(previewPlan(p,plan([{op:'add',kind:'box',patch}])).next.entities.at(-1)?.patrol).toEqual(patch.patrol);expect(()=>previewPlan(p,plan([{op:'add',kind:'sphere',patch}]))).toThrow();});
