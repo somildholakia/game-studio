@@ -103,4 +103,24 @@ Starting revision [7a9d624](https://github.com/somildholakia/game-studio/commit/
 | Assets/materials: scalable asset streaming and compression (+2) | [9b297fd](https://github.com/somildholakia/game-studio/commit/9b297fd75fffa232bab594083bf150b3e4107ec2), independent gzip level/model chunks, raw content deduplication, bounded concurrent loading and integrity checks, 32-level reference test. Bounded current asset quotas, not CDN/large-world production scale. |
 | AI/tools: substantial end-to-end game generation evaluation (+2) | [a4791f3](https://github.com/somildholakia/game-studio/commit/a4791f32c961fdd518dc1d32fdf60c1f57d25614) and [b342165](https://github.com/somildholakia/game-studio/commit/b3421656dd1c9f28294c58e3367079bf5c536c2e): 45 actual procedural generated-game evaluations, eight authored runtime scenarios, mocked BYOK-to-export and offline generator browser tests. Scope is local procedural generation and the validated pipeline; no live LLM quality/provider credit. |
 
-[Browser compatibility 46008707476](https://github.com/somildholakia/game-studio/actions/runs/46008707476) succeeded (55/55 tests each in Chromium, Firefox and WebKit, zero skips). [Validate 46008708002](https://github.com/somildholakia/game-studio/actions/runs/46008708002) must also succeed before recording the controlled 80/100 (78/100 strict) checkpoint. Later profiling candidate needs its own verification and must not be credited for physical GPU/device testing.
+[Browser compatibility 46008707476](https://github.com/somildholakia/game-studio/actions/runs/46008707476) succeeded (55/55 tests each in Chromium, Firefox and WebKit, zero skips). [Validate 46008708002](https://github.com/somildholakia/game-studio/actions/runs/46008708002) also concluded success, establishing the controlled 80/100 (78/100 strict) checkpoint. Later profiling candidate needs its own verification and must not be credited for physical GPU/device testing.
+
+## Verified 80-point checkpoint
+
+At b342165 both workflows above passed. Validate recorded 50 unit files / 294 tests, nine Node tests, 55 Chromium E2E tests, production build, dependency review and audit, room load and static manifest checks. The browser matrix recorded 165/165 executions. [Static artifact](https://github.com/somildholakia/game-studio/actions/runs/46008708002/artifacts/15202549719), [security evidence](https://github.com/somildholakia/game-studio/actions/runs/46008708002/artifacts/15203140144), [load report](https://github.com/somildholakia/game-studio/actions/runs/46008708002/artifacts/15202249547). Credit the four bounded acceptance items above without changing the rubric.
+
+| Category | Controlled score |
+|---|---:|
+| Foundation | 10/10 (8/10 strict) |
+| Editor | 8/10 |
+| Modeling | 10/10 |
+| Animation | 10/10 |
+| Assets/materials | 10/10 |
+| Gameplay/runtime | 6/10 |
+| AI/tools | 8/10 |
+| Multiplayer/collaboration | 6/10 |
+| Publishing/cloud | 6/10 |
+| Release quality | 6/10 |
+| **Total** | **80/100 (40/50); 78/100 strict (39/50)** |
+
+Additional candidate: bounded gameplay profiling, frame/simulation/render-submission measurements across desktop and compact software-rendered browser profiles (92b102b). Full CI required before credit; this is not physical GPU timing or physical-device validation. Additional GLB streaming regression and optional opt-in live AI harness do not independently earn points. No production gate is waived.
