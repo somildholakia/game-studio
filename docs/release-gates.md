@@ -52,3 +52,6 @@ Verified controlled 72-point checkpoint 53290c2250f9eb3bbbfdf22b64aa026a8313ed5a
 
 
 The hosted website ZIP and compressed content-addressed delivery have controlled static-host tests, not a public deployment/rollback drill. The live Git gateway smoke verifies real repository history and optimistic concurrency, not production tenant isolation. See the acceptance ledger for controlled planning scope. A physical GPU/device test and real live AI evaluation remain mandatory where required.
+
+
+Runtime profiling at df19bb7272f8d358ce3e44b8795fa04180b38d4e passed [Validate 46009752598](https://github.com/somildholakia/game-studio/actions/runs/46009752598) and [Browser compatibility 46009752620](https://github.com/somildholakia/game-studio/actions/runs/46009752620), establishing the 82-point controlled baseline in the existing rubric. Physical-device and GPU budgets remain unverified. Subsequent reference backup/auth API, mass-weighted dynamic contact, and server-authoritative independent-lane race implementation do not waive any production release gate. Actual cloud deployment, OIDC/end-user isolation, off-site restoration, shared-world multiplayer, full rigid-body physics, live AI and physical-device/accessibility acceptance remain open. See the evidence ledger and PR for current-head checks.
