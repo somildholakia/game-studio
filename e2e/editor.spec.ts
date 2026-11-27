@@ -476,3 +476,11 @@ test('suspend simulation during WebGL context loss and resume after recovery',as
  await page.locator('canvas').evaluate(c=>(Reflect.get(c,'testContextLoss') as WEBGL_lose_context).restoreContext());
  await expect(page.getByTestId('graphics-recovery')).toHaveCount(0,{timeout:30000});await expect(page.getByRole('timer')).not.toHaveText(frozen!,{timeout:15000});
 });
+
+test('local multiplayer room UI exchanges presence through its validated transport',async({page})=>{
+ const code='abcdef12',id='0123456789abcdef',token='a'.repeat(48);let updates=0;
+ await page.route('**/api/rooms',async route=>{const p=route.request().postDataJSON();if(p.action==='create')await route.fulfill({json:{code,id,token,peers:[]}});else if(p.action==='update'){updates++;await route.fulfill({json:{peers:[{id:'fedcba9876543210',name:'Peer',position:[1,1,1]}]}});}else await route.fulfill({json:{left:true}});});
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ const room=page.getByRole('group',{name:'Local multiplayer preview',exact:true});await room.getByRole('button',{name:'Create local room'}).click();await expect(room.getByText(code,{exact:true})).toBeVisible();await expect(room.getByText('Peer',{exact:true})).toBeVisible();expect(updates).toBeGreaterThan(0);
+ await room.getByRole('button',{name:'Leave room'}).click();await expect(room.getByRole('button',{name:'Create local room'})).toBeVisible();
+});

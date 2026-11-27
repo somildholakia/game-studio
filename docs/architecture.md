@@ -11,6 +11,7 @@ Manual-first browser authoring with beginner and expert workflows. Benchmark Unr
 - Studios: mesh editing, character rigging, animation, materials, terrain, UI, audio and cinematics.
 - AI: provider adapters, credential isolation, bounded schema-validated command plans, explicit review and undo. No arbitrary code in privileged editor. Do not persist keys in localStorage or project files.
 - Plugins: initial declarative creator-tool manifests and typed parameters, explicit command capabilities and validated preview/apply. Executable plugins still require sandboxed workers/iframes and message validation.
+- Multiplayer: local-development presence room prototype with bounded membership, per-member tokens and level identity; authoritative synchronized gameplay, matchmaking and public transport remain future work.
 - Cloud: tenant-scoped metadata in PostgreSQL, object storage and signed upload URLs, CDN, quota controls, optional Yjs collaboration. GitHub App least-privilege access and large asset strategy.
 - Export: standalone web runtime first; native builds require separate toolchains.
 
