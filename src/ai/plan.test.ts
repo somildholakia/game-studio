@@ -70,3 +70,10 @@ it('reviews life limits and lose rules while rejecting invalid limits',()=>{
  const preview=previewPlan(p,plan([{op:'logic',value}]));expect(preview.next.logic?.maxLives).toBe(3);expect(preview.next.logic?.rules[0].action.kind).toBe('lose');
  expect(()=>previewPlan(p,plan([{op:'logic',value:{...value,maxLives:100}}]))).toThrow();
 });
+
+it('reviews box trigger zones and rejects incompatible zone event sources',()=>{
+ const p=initialProject(),id=p.entities[1].id;
+ const value={autoWin:false,rules:[{id:'zone',event:'zone-enter',sourceId:id,minScore:0,action:{kind:'win'}}]};
+ const result=previewPlan(p,plan([{op:'edit',id,patch:{role:'trigger'}},{op:'logic',value}]));expect(result.next.entities[1].role).toBe('trigger');
+ expect(()=>previewPlan(p,plan([{op:'logic',value}]))).toThrow('incompatible');
+});

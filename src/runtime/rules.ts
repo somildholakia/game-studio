@@ -1,6 +1,6 @@
-export const events=['start','collect','goal','respawn','checkpoint','jump','second'] as const;
+export const events=['start','collect','goal','respawn','checkpoint','jump','second','zone-enter','zone-exit'] as const;
 export type EventKind=typeof events[number];
-export const eventSourceRole=(event:EventKind):'collectible'|'checkpoint'|'goal'|undefined=>event==='collect'?'collectible':event==='checkpoint'?'checkpoint':event==='goal'?'goal':undefined;
+export const eventSourceRole=(event:EventKind):'collectible'|'checkpoint'|'goal'|'trigger'|undefined=>event==='collect'?'collectible':event==='checkpoint'?'checkpoint':event==='goal'?'goal':event==='zone-enter'||event==='zone-exit'?'trigger':undefined;
 export type CounterCondition={key:string;comparison:'gte'|'lte'|'eq';value:number};
 export type Action={kind:'score';amount:number}|{kind:'message';text:string}|{kind:'win'}|{kind:'lose'}|{kind:'counter';key:string;mode:'add'|'set';amount:number};
 export type RuleTiming={start:number;repeat:number};

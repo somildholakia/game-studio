@@ -111,3 +111,32 @@ it('uses limited lives per level and preserves final score instead of respawning
  expect(s.logic.score).toBe(5);expect(s.logic.message).toBe('No lives remaining');
  expect(step(p,s,{x:1,z:0},.05)).toBe(s);expect(begin(p).respawns).toBe(0);
 });
+
+it('tracks independent trigger zone entry and exit without blocking movement',()=>{
+ const p:Project={version:1,name:'Zones',entities:[
+ {...entity('box'),role:'player',position:[0,.75,0]},
+ {...entity('box'),id:'a',role:'trigger',position:[3,.75,0],scale:[1,2,2]},
+ {...entity('box'),id:'b',role:'trigger',position:[4,.75,0],scale:[1,2,2]}
+ ],logic:{autoWin:false,rules:[
+ {id:'any',event:'zone-enter',minScore:0,action:{kind:'score',amount:1}},
+ {id:'a',event:'zone-enter',sourceId:'a',minScore:0,action:{kind:'score',amount:10}},
+ {id:'out',event:'zone-exit',sourceId:'a',minScore:0,action:{kind:'score',amount:100}}
+ ]}};
+ let s=begin(p);for(let i=0;i<16;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.insideZoneIds).toEqual(new Set(['a','b']));expect(s.logic.score).toBe(12);
+ for(let i=0;i<5;i++)s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(12);
+ for(let i=0;i<12;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.insideZoneIds.size).toBe(0);expect(s.logic.score).toBe(112);expect(s.position[0]).toBeGreaterThan(5);
+});
+it('clears zone occupancy on respawn and does not dispatch synthetic exits',()=>{
+ const p:Project={version:1,name:'Zone spawn',entities:[
+ {...entity('box'),role:'player',position:[0,.75,0]},
+ {...entity('box'),id:'zone',role:'trigger',position:[0,.75,0],scale:[2,2,2]}
+ ],logic:{autoWin:false,rules:[
+ {id:'in',event:'zone-enter',minScore:0,action:{kind:'score',amount:1}},
+ {id:'out',event:'zone-exit',minScore:0,action:{kind:'score',amount:100}}
+ ]}};
+ let s=step(p,begin(p),{x:0,z:0},.05);expect(s.logic.score).toBe(1);
+ s=step(p,{...s,position:[0,-1000,0]},{x:0,z:0},.005);expect(s.insideZoneIds.size).toBe(0);expect(s.logic.score).toBe(0);
+ s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(1);
+});

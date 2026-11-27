@@ -16,7 +16,7 @@ import {readTexture,type TextureStyle} from './textures';
 import {projections,type Projection} from './uv';
 import type {Prefab} from './prefabs';
 export type Vec3=[number,number,number];
-export const roles=['decoration','player','solid','collectible','goal','hazard','checkpoint','dynamic'] as const;
+export const roles=['decoration','player','solid','collectible','goal','hazard','checkpoint','dynamic','trigger'] as const;
 export type Role=typeof roles[number];
 export const kinds=['box','sphere','ground','cylinder','cone','torus','character','model','mesh','terrain'] as const;
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
@@ -44,6 +44,7 @@ export function parseProject(raw:string):Project {
  const result:Entity={id:e.id,name:e.name,kind:e.kind,position:e.position,rotation:e.rotation,scale:e.scale,color:e.color,role:e.role??'decoration'};
  if(e.prefabId!==undefined){if(typeof e.prefabId!=='string'||!e.prefabId||e.prefabId.length>200)throw Error('Invalid prefab reference');result.prefabId=e.prefabId;}
  if(e.kind==='model')result.assetId=e.assetId;
+ if(e.role==='trigger'&&e.kind!=='box')throw Error('Trigger zones require box geometry');
  if(e.role==='dynamic'){if(!['box','sphere','cylinder','cone','torus'].includes(e.kind))throw Error('Unsupported dynamic body geometry');result.body=readBody(e.body);}
  if(e.patrol!==undefined&&(e.role==='hazard'||e.role==='collectible'))result.patrol=readPatrol(e.patrol);
  if(e.animation!==undefined)result.animation=readClip(e.animation);

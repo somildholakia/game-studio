@@ -6,12 +6,12 @@ import {compileBodies,initialBodies,advanceBodies,bodyBounds,type BodyStates} fr
 import {triggerSpec,triggerBounds} from './patrol';
 import {defaults} from './physicsSettings';
 export type Input={x:number;z:number;jump?:boolean};
-export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;jumpHeld:boolean;respawns:number;logic:LogicState;insideGoal:boolean;insideGoalIds:ReadonlySet<string>;checkpointId:string|null;respawnPosition:Vec3;bodies:BodyStates;elapsed:number};
+export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;jumpHeld:boolean;respawns:number;logic:LogicState;insideGoal:boolean;insideGoalIds:ReadonlySet<string>;insideZoneIds:ReadonlySet<string>;checkpointId:string|null;respawnPosition:Vec3;bodies:BodyStates;elapsed:number};
 export function begin(project:Project):GameState {
  const spawn=project.entities.find(e=>e.role==='player');
  if(!spawn)throw Error('Add a player spawn before playing.');
  const logic=trigger(project.logic??defaultLogic,{score:0,message:'',won:false},'start');
- return {position:[...spawn.position],collected:new Set(),won:logic.won,velocityY:0,grounded:false,jumpHeld:false,respawns:0,logic,insideGoal:false,insideGoalIds:new Set(),checkpointId:null,respawnPosition:[...spawn.position],bodies:initialBodies(compileBodies(project)),elapsed:0};
+ return {position:[...spawn.position],collected:new Set(),won:logic.won,velocityY:0,grounded:false,jumpHeld:false,respawns:0,logic,insideGoal:false,insideGoalIds:new Set(),insideZoneIds:new Set(),checkpointId:null,respawnPosition:[...spawn.position],bodies:initialBodies(compileBodies(project)),elapsed:0};
 }
 export function compileWorld(project:Project){
  const spawn=project.entities.find(e=>e.role==='player');if(!spawn)throw Error('Add a player spawn before playing.');
@@ -25,8 +25,9 @@ export function compileWorld(project:Project){
  const goals=project.entities.filter(e=>e.role==='goal').map(e=>({id:e.id,bounds:bounds(e)}));
  const bodies=compileBodies(project);
  const hazards=project.entities.filter(e=>e.role==='hazard').map(triggerSpec);
+ const zones=project.entities.filter(e=>e.role==='trigger').map(e=>({id:e.id,bounds:bounds(e)}));
  const checkpoints=project.entities.filter(e=>e.role==='checkpoint').map(e=>({id:e.id,bounds:bounds(e)}));
- return {spawn:spawn.position,half,solids,floors,terrains,pickups,goals,bodies,hazards,checkpoints,settings:project.physics??defaults,logic:project.logic??defaultLogic};
+ return {spawn:spawn.position,half,solids,floors,terrains,pickups,goals,bodies,hazards,checkpoints,zones,settings:project.physics??defaults,logic:project.logic??defaultLogic};
 }
 type World=ReturnType<typeof compileWorld>;
 function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolean):GameState{
@@ -54,14 +55,18 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  if(p[1]<settings.fallLimit||world.hazards.some(b=>overlaps(p,half,triggerBounds(b,elapsed)))){
  const deaths=state.respawns+1;
  if(world.logic.maxLives!==undefined&&deaths>=world.logic.maxLives){return {...state,position:p,velocityY:0,grounded:false,respawns:deaths,bodies,elapsed,logic:{...state.logic,lost:true,message:'No lives remaining'},won:false};}
- const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false,insideGoalIds:new Set()};}
+ const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false,insideGoalIds:new Set(),insideZoneIds:new Set()};}
  const collected=new Set(state.collected);let logic=state.logic;if(jumped)logic=trigger(world.logic,logic,'jump');if(Math.floor(elapsed+1e-9)>Math.floor(state.elapsed+1e-9))logic=trigger(world.logic,logic,'second',undefined,Math.floor(elapsed+1e-9));let checkpointId=state.checkpointId;let respawnPosition=state.respawnPosition;
  const checkpoint=world.checkpoints.find(c=>overlaps(p,half,c.bounds));if(checkpoint&&checkpoint.id!==checkpointId){checkpointId=checkpoint.id;respawnPosition=[checkpoint.bounds.center[0],checkpoint.bounds.center[1]+checkpoint.bounds.half[1]+half[1]+.05,checkpoint.bounds.center[2]];logic=trigger(world.logic,logic,'checkpoint',checkpoint.id);}
  for(const item of world.pickups)if(!collected.has(item.id)&&overlaps(p,half,triggerBounds(item,elapsed))){collected.add(item.id);logic=trigger(world.logic,logic,'collect',item.id);}
  const insideGoalIds=new Set(world.goals.filter(g=>overlaps(p,half,g.bounds)).map(g=>g.id));const insideGoal=insideGoalIds.size>0;
  for(const id of insideGoalIds)if(!state.insideGoalIds.has(id))logic=trigger(world.logic,logic,'goal',id);
+ const insideZoneIds=new Set(world.zones.filter(zone=>overlaps(p,half,zone.bounds)).map(zone=>zone.id));
+ // Stable authored order: exits before enters. Respawn clears overlap state without emitting exits.
+ for(const zone of world.zones)if(state.insideZoneIds.has(zone.id)&&!insideZoneIds.has(zone.id))logic=trigger(world.logic,logic,'zone-exit',zone.id);
+ for(const zone of world.zones)if(insideZoneIds.has(zone.id)&&!state.insideZoneIds.has(zone.id))logic=trigger(world.logic,logic,'zone-enter',zone.id);
  const won=!logic.lost&&(logic.won||(world.logic.autoWin&&insideGoal&&world.pickups.every(e=>collected.has(e.id))));
- return {...state,position:p,velocityY:vy,grounded:landed,collected,won,logic,insideGoal,insideGoalIds,checkpointId,respawnPosition,bodies,elapsed};
+ return {...state,position:p,velocityY:vy,grounded:landed,collected,won,logic,insideGoal,insideGoalIds,insideZoneIds,checkpointId,respawnPosition,bodies,elapsed};
 }
 export function advance(world:World,state:GameState,input:Input,dt:number):GameState{
  if(state.won||state.logic.lost)return state;

@@ -15,3 +15,8 @@ it('keeps the destination life limit when installing reusable lose rules',()=>{
  const target=initialProject();target.logic={autoWin:true,maxLives:5,rules:[]};
  const result=installPack(target,createPack(p,'Challenge'));expect(result.logic?.maxLives).toBe(5);expect(result.logic?.rules[0].action.kind).toBe('lose');
 });
+
+it('omits level-specific zone rules from portable packs',()=>{
+ const p=initialProject();p.logic={autoWin:false,rules:[{id:'zone',event:'zone-exit',sourceId:'zone-a',minScore:0,action:{kind:'win'}},{id:'any',event:'zone-enter',minScore:0,action:{kind:'score',amount:1}}]};
+ expect(createPack(p,'Zones').rules.map(r=>r.id)).toEqual(['any']);
+});

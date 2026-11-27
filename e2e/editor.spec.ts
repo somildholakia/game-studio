@@ -400,3 +400,17 @@ test('pause and resume the simulation clock in editor and exported play',async({
  await expect(page.locator('#pause-notice')).toBeVisible();await page.waitForTimeout(1300);await expect(page.locator('#timer')).toHaveText(exported!);
  await page.getByRole('button',{name:'Resume',exact:true}).click();await expect(page.locator('#timer')).not.toHaveText(exported!,{timeout:10000});
 });
+
+test('create an invisible trigger zone and fire its scoped entry event',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByRole('button',{name:'+ box',exact:true}).click();
+ await page.getByLabel('Name',{exact:true}).last().fill('Welcome zone');
+ await page.getByLabel('Gameplay role').selectOption('trigger');
+ const position=page.getByRole('group',{name:'position',exact:true});
+ await position.getByLabel('Z',{exact:true}).fill('-6');
+ await page.getByRole('button',{name:'+ Add event rule'}).click();
+ const rule=page.getByRole('group',{name:'Rule 1',exact:true});
+ await rule.getByLabel('When').selectOption('zone-enter');
+ await rule.getByLabel('Event object').selectOption({label:await rule.getByLabel('Event object').locator('option').nth(1).textContent()??''});
+ await rule.getByLabel('Do').selectOption('message');await rule.getByLabel('Message',{exact:true}).fill('Welcome to the zone');
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();await expect(page.getByRole('status')).toContainText('Welcome to the zone');
+});

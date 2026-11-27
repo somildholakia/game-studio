@@ -23,3 +23,9 @@ it('duplicates a level independently and remaps object-specific rules while shar
  expect(orderedScenes(parseProject(JSON.stringify(next))).map(s=>s.name)).toEqual(['Level 1','Variant']);
  expect(()=>duplicateScene(p,'unknown')).toThrow();
 });
+
+it('preserves trigger zones and remaps their event targets on level duplication',()=>{
+ const p=initialProject();const zone={...entity('box'),role:'trigger' as const};p.entities.push(zone);p.logic={autoWin:false,rules:[{id:'enter',event:'zone-enter',sourceId:zone.id,minScore:0,action:{kind:'win'}}]};
+ const parsed=parseProject(JSON.stringify(p));const copy=duplicateScene(parsed,'main');expect(copy.entities[2].role).toBe('trigger');expect(copy.logic?.rules[0].sourceId).toBe(copy.entities[2].id);
+ expect(()=>parseProject(JSON.stringify({...p,entities:[{...zone,kind:'sphere'}]}))).toThrow('box geometry');
+});

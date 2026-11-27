@@ -57,3 +57,10 @@ it('validates optional per-level life limits without changing legacy defaults',(
  expect(readLogic(undefined).maxLives).toBeUndefined();
  for(const maxLives of [0,-1,100,1.5,'3',null])expect(()=>readLogic({autoWin:true,rules:[],maxLives})).toThrow();
 });
+
+it('validates object-scoped zone events',()=>{
+ const r={id:'zone',event:'zone-enter',sourceId:'a',minScore:0,action:{kind:'message',text:'Entered'}};
+ const logic=readLogic({autoWin:false,rules:[r]});
+ expect(trigger(logic,{score:0,won:false,message:''},'zone-enter','a').message).toBe('Entered');
+ expect(trigger(logic,{score:0,won:false,message:''},'zone-enter','b').message).toBe('');
+});
