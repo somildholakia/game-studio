@@ -352,3 +352,24 @@ test('author, duplicate, reorder and play a timed no-code rule',async({page})=>{
  await expect(page.getByRole('status')).toContainText('Timed message',{timeout:20000});
  await expect(page.getByRole('timer')).toHaveText(/Time: 0:0[1-9]/);
 });
+
+test('author a timed loss with limited lives and restart the exported game',async({page},testInfo)=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();
+ await page.getByLabel('Limit player lives').check();await page.getByLabel('Starting lives').fill('2');
+ await page.getByRole('button',{name:'+ Add event rule'}).click();
+ const rule=page.getByRole('group',{name:'Rule 1',exact:true});
+ await rule.getByLabel('When').selectOption('second');await rule.getByLabel('Custom event timing').check();
+ await rule.getByLabel('First second').fill('1');await rule.getByLabel('Do').selectOption('lose');
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Game over!',{timeout:20000});
+ await expect(page.getByRole('status')).toContainText('Lives: 2');await expect(page.getByRole('button',{name:'Next level',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Restart',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Collectibles 0 / 2');
+ await page.getByRole('button',{name:'■ Stop',exact:true}).click();
+ const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();
+ const file=await pending,path=testInfo.outputPath('loss.html');await copyFile((await file.path())!,path);
+ await page.goto(pathToFileURL(path).href);
+ await expect(page.locator('#hud')).toContainText('Game over!',{timeout:30000});
+ await expect(page.locator('#next-level')).toBeHidden();await page.getByRole('button',{name:'Restart',exact:true}).click();
+ await expect(page.locator('#hud')).toContainText('Collectibles 0 / 2');
+});

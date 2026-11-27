@@ -41,3 +41,19 @@ it('rejects out-of-range and non-second timing and invalid one-shot flags',()=>{
   expect(()=>readLogic({autoWin:false,rules:[{...rule,...patch}]})).toThrow();
  }
 });
+
+it('accepts loss rules and preserves the first explicit terminal result',()=>{
+ const win={id:'win',event:'start',minScore:0,action:{kind:'win'}};
+ const lose={id:'lose',event:'start',minScore:0,action:{kind:'lose'}};
+ const s={score:0,message:'',won:false};
+ const failed=trigger(readLogic({autoWin:true,rules:[lose,win]}),s,'start');
+ expect(failed.lost).toBe(true);expect(failed.won).toBe(false);
+ const won=trigger(readLogic({autoWin:true,rules:[win,lose]}),s,'start');
+ expect(won.won).toBe(true);expect(won.lost).toBeUndefined();
+ expect(s).toEqual({score:0,message:'',won:false});
+});
+it('validates optional per-level life limits without changing legacy defaults',()=>{
+ expect(readLogic({autoWin:true,rules:[],maxLives:3}).maxLives).toBe(3);
+ expect(readLogic(undefined).maxLives).toBeUndefined();
+ for(const maxLives of [0,-1,100,1.5,'3',null])expect(()=>readLogic({autoWin:true,rules:[],maxLives})).toThrow();
+});

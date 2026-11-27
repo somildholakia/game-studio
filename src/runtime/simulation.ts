@@ -51,22 +51,25 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  if(vy<=0&&Number.isFinite(surface)){const top=surface+half[1];const crossing=p[1]>=top-1e-6&&nextY<=top;const downhill=wasOnTerrain&&!jump&&Math.abs(surface-oldSurface)<=.5&&p[1]>=top-1e-6;
  if(crossing||downhill){const contact=moveAxis(p,half,1,top-p[1],solids);if(!contact.hit&&(!landed||top>=nextY)){nextY=top;landed=true;}}}
  p[1]=nextY;if(vertical.hit||landed)vy=0;
- if(p[1]<settings.fallLimit||world.hazards.some(b=>overlaps(p,half,triggerBounds(b,elapsed)))){const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false,insideGoalIds:new Set()};}
+ if(p[1]<settings.fallLimit||world.hazards.some(b=>overlaps(p,half,triggerBounds(b,elapsed)))){
+ const deaths=state.respawns+1;
+ if(world.logic.maxLives!==undefined&&deaths>=world.logic.maxLives){return {...state,position:p,velocityY:0,grounded:false,respawns:deaths,bodies,elapsed,logic:{...state.logic,lost:true,message:'No lives remaining'},won:false};}
+ const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false,insideGoalIds:new Set()};}
  const collected=new Set(state.collected);let logic=state.logic;if(jumped)logic=trigger(world.logic,logic,'jump');if(Math.floor(elapsed+1e-9)>Math.floor(state.elapsed+1e-9))logic=trigger(world.logic,logic,'second',undefined,Math.floor(elapsed+1e-9));let checkpointId=state.checkpointId;let respawnPosition=state.respawnPosition;
  const checkpoint=world.checkpoints.find(c=>overlaps(p,half,c.bounds));if(checkpoint&&checkpoint.id!==checkpointId){checkpointId=checkpoint.id;respawnPosition=[checkpoint.bounds.center[0],checkpoint.bounds.center[1]+checkpoint.bounds.half[1]+half[1]+.05,checkpoint.bounds.center[2]];logic=trigger(world.logic,logic,'checkpoint',checkpoint.id);}
  for(const item of world.pickups)if(!collected.has(item.id)&&overlaps(p,half,triggerBounds(item,elapsed))){collected.add(item.id);logic=trigger(world.logic,logic,'collect',item.id);}
  const insideGoalIds=new Set(world.goals.filter(g=>overlaps(p,half,g.bounds)).map(g=>g.id));const insideGoal=insideGoalIds.size>0;
  for(const id of insideGoalIds)if(!state.insideGoalIds.has(id))logic=trigger(world.logic,logic,'goal',id);
- const won=logic.won||(world.logic.autoWin&&insideGoal&&world.pickups.every(e=>collected.has(e.id)));
+ const won=!logic.lost&&(logic.won||(world.logic.autoWin&&insideGoal&&world.pickups.every(e=>collected.has(e.id))));
  return {...state,position:p,velocityY:vy,grounded:landed,collected,won,logic,insideGoal,insideGoalIds,checkpointId,respawnPosition,bodies,elapsed};
 }
 export function advance(world:World,state:GameState,input:Input,dt:number):GameState{
- if(state.won)return state;
+ if(state.won||state.logic.lost)return state;
  const time=Math.min(.1,Math.max(0,Number.isFinite(dt)?dt:0));if(!time)return state;
  const count=Math.ceil(time*120);const sub=time/count;let s=state;
  const safe={x:Number.isFinite(input.x)?Math.max(-1,Math.min(1,input.x)):0,z:Number.isFinite(input.z)?Math.max(-1,Math.min(1,input.z)):0};
  const jump=!!input.jump&&!state.jumpHeld;
- for(let i=0;i<count&&!s.won;i++)s=integrate(world,s,safe,sub,jump&&i===0);
+ for(let i=0;i<count&&!s.won&&!s.logic.lost;i++)s=integrate(world,s,safe,sub,jump&&i===0);
  return {...s,jumpHeld:!!input.jump};
 }
 export function step(project:Project,state:GameState,input:Input,dt:number):GameState{return advance(compileWorld(project),state,input,dt);}

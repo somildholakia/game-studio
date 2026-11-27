@@ -14,7 +14,7 @@ import {triggerBounds} from '../runtime/patrol';
 import {sample} from '../core/animation';
 import type {Project} from '../core/project';
 import {begin,advance,compileWorld,type GameState} from '../runtime/simulation';
-export type PlayStatus={collected:number;total:number;won:boolean;score:number;message:string;counters?:Record<string,number>;elapsedSeconds?:number};
+export type PlayStatus={collected:number;total:number;won:boolean;lost?:boolean;livesRemaining?:number;score:number;message:string;counters?:Record<string,number>;elapsedSeconds?:number};
 export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void,onMetrics?:(m:RenderMetrics)=>void,onVertexPick?:(index:number)=>void) {
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
@@ -64,7 +64,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  for(const [id,body] of run.state.bodies)meshes.get(id)?.mesh.position.set(...body.position);
  camera.setTarget(new Vector3(...run.state.position));
  for(const item of [...run.world.pickups,...run.world.hazards]){const mesh=meshes.get(item.id)?.mesh;if(item.patrol)mesh?.position.set(...triggerBounds(item,run.state.elapsed).center);if(run.state.collected.has(item.id))mesh?.setEnabled(false);else mesh?.setEnabled(true);}
- const status={collected:run.state.collected.size,total:run.total,won:run.state.won,score:run.state.logic.score,message:run.state.logic.message,counters:run.state.logic.counters,...(run.project.presentation?.showTimer?{elapsedSeconds:Math.floor(run.state.elapsed+1e-9)}:{})};
+ const status={collected:run.state.collected.size,total:run.total,won:run.state.won,lost:!!run.state.logic.lost,...(run.world.logic.maxLives!==undefined?{livesRemaining:Math.max(0,run.world.logic.maxLives-run.state.respawns)}:{}),score:run.state.logic.score,message:run.state.logic.message,counters:run.state.logic.counters,...(run.project.presentation?.showTimer?{elapsedSeconds:Math.floor(run.state.elapsed+1e-9)}:{})};
  const signature=JSON.stringify(status);if(signature!==run.last){run.last=signature;run.notify(status);}
  }
  if(marker){const point=!run&&!previewing&&vertexMode?vertexPoint(vertexIndex):null;marker.setEnabled(!!point);if(point){marker.position.copyFrom(point);marker.scaling.setAll(Math.max(.2,camera.radius/12));}}

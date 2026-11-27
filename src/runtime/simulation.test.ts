@@ -93,3 +93,21 @@ it('resets once-only rules on respawn while keeping the level clock',()=>{
  expect(s.respawns).toBe(1);expect(s.logic.score).toBe(0);expect(s.elapsed).toBeGreaterThan(1);
  for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.logic.score).toBe(1);
 });
+
+it('stops a timed defeat, prevents automatic win, and restarts fresh',()=>{
+ const p=world();p.logic={autoWin:true,rules:[{id:'timeout',event:'second',minScore:0,timing:{start:1,repeat:0},action:{kind:'lose'}}]};
+ let s=begin(p);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);
+ expect(s.logic.lost).toBe(true);expect(s.won).toBe(false);
+ expect(step(p,s,{x:1,z:0},.1)).toBe(s);
+ const fresh=begin(p);expect(fresh.logic.lost).toBeUndefined();expect(fresh.elapsed).toBe(0);
+});
+it('uses limited lives per level and preserves final score instead of respawning on last death',()=>{
+ const p=world();p.logic={autoWin:false,maxLives:2,rules:[{id:'respawn',event:'respawn',minScore:0,action:{kind:'score',amount:5}}]};
+ let s=begin(p);
+ s=step(p,{...s,position:[0,-1000,0]},{x:0,z:0},.05);
+ expect(s.respawns).toBe(1);expect(s.logic.lost).toBeUndefined();expect(s.logic.score).toBe(5);
+ s=step(p,{...s,position:[0,-1000,0]},{x:0,z:0},.05);
+ expect(s.respawns).toBe(2);expect(s.logic.lost).toBe(true);expect(s.won).toBe(false);
+ expect(s.logic.score).toBe(5);expect(s.logic.message).toBe('No lives remaining');
+ expect(step(p,s,{x:1,z:0},.05)).toBe(s);expect(begin(p).respawns).toBe(0);
+});

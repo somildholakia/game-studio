@@ -6,3 +6,8 @@ it('formats a simulated timer and validates the optional persisted setting',()=>
  expect(readPresentation({...defaultPresentation,showTimer:true}).showTimer).toBe(true);
  expect(()=>readPresentation({...defaultPresentation,showTimer:'yes'})).toThrow();
 });
+
+it('shows loss and limited lives regardless of optional score display',()=>{
+ const s={won:false,lost:true,livesRemaining:0,collected:1,total:2,score:10,message:''};
+ expect(hudLines({...defaultPresentation,showScore:false},s)).toEqual(['Game over!','Lives: 0']);
+});

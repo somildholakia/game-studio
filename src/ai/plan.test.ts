@@ -64,3 +64,9 @@ it('rejects an AI rule that references an unknown or role-incompatible source',(
  const p=initialProject();
  expect(()=>previewPlan(p,plan([{op:'logic',value:{autoWin:false,rules:[{id:'bad',event:'collect',sourceId:p.entities[0].id,minScore:0,action:{kind:'win'}}]}}]))).toThrow('incompatible');
 });
+
+it('reviews life limits and lose rules while rejecting invalid limits',()=>{
+ const p=initialProject(),value={autoWin:true,maxLives:3,rules:[{id:'time',event:'second',minScore:0,timing:{start:60,repeat:0},action:{kind:'lose'}}]};
+ const preview=previewPlan(p,plan([{op:'logic',value}]));expect(preview.next.logic?.maxLives).toBe(3);expect(preview.next.logic?.rules[0].action.kind).toBe('lose');
+ expect(()=>previewPlan(p,plan([{op:'logic',value:{...value,maxLives:100}}]))).toThrow();
+});

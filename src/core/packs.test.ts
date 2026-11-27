@@ -9,3 +9,9 @@ it('exports only portable rules and rejects targeted rules in imported packs',()
  const pack=createPack(p,'Portable rules');expect(pack.rules.map(r=>r.id)).toEqual(['portable']);
  expect(()=>readPack(JSON.stringify({...pack,rules:p.logic!.rules}))).toThrow('level-specific');
 });
+
+it('keeps the destination life limit when installing reusable lose rules',()=>{
+ const p=initialProject();p.logic={autoWin:false,maxLives:2,rules:[{id:'time',event:'second',minScore:0,timing:{start:10,repeat:0},action:{kind:'lose'}}]};
+ const target=initialProject();target.logic={autoWin:true,maxLives:5,rules:[]};
+ const result=installPack(target,createPack(p,'Challenge'));expect(result.logic?.maxLives).toBe(5);expect(result.logic?.rules[0].action.kind).toBe('lose');
+});

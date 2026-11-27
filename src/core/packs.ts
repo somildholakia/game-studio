@@ -19,6 +19,6 @@ export function installPack(project:Project,pack:Pack):Project{
  const safe=readPack(JSON.stringify(pack));const assets=new Map((project.assets??[]).map(a=>[a.id,a]));
  for(const a of safe.assets){const old=assets.get(a.id);if(old&&old.data!==a.data)throw Error('Asset identity conflict');if(!old)assets.set(a.id,a);}
  const prefabs=[...(project.prefabs??[]),...safe.prefabs.map(f=>({...structuredClone(f),id:crypto.randomUUID()}))];
- const logic=readLogic({autoWin:project.logic?.autoWin??true,rules:[...(project.logic?.rules??[]),...safe.rules.map(r=>({...structuredClone(r),id:crypto.randomUUID()}))]});
+ const logic=readLogic({autoWin:project.logic?.autoWin??true,maxLives:project.logic?.maxLives,rules:[...(project.logic?.rules??[]),...safe.rules.map(r=>({...structuredClone(r),id:crypto.randomUUID()}))]});
  return parseProject(JSON.stringify({...project,assets:validateAssets([...assets.values()]),prefabs,logic}));
 }
