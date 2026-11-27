@@ -447,3 +447,10 @@ test('author a counter-controlled gate and undo its settings',async({page})=>{
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(gate.getByLabel('Gate threshold')).toHaveValue('1');
  await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(gate.getByLabel('Gate threshold')).toHaveValue('3');
 });
+
+test('import a bounded WAV effect and restore it after reload',async({page})=>{
+ await page.goto('/');const audio=page.getByRole('group',{name:'Audio Studio · Event sounds',exact:true});
+ const wav=Buffer.alloc(44+1600);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(1600,40);
+ await audio.getByLabel('Import WAV effect').setInputFiles({name:'collect.wav',mimeType:'audio/wav',buffer:wav});await expect(audio.getByText('collect.wav',{exact:true})).toBeVisible();
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await expect(page.getByRole('group',{name:'Audio Studio · Event sounds',exact:true}).getByText('collect.wav',{exact:true})).toBeVisible();
+});

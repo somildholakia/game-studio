@@ -3,6 +3,7 @@ import {readPhysics,type PhysicsSettings} from '../runtime/physicsSettings';
 import {readLogic,readCounterCondition,type Logic,type CounterCondition} from '../runtime/rules';
 import {readClip,type Clip} from './animation';
 import {cubeMesh,readMesh,type MeshData} from './mesh';
+import {MAX_SOUND_REFERENCES} from '../runtime/wav';
 import {readAudio,type AudioSettings} from '../runtime/audio';
 import {defaultTerrain,readTerrain,validTerrainTransform,type TerrainSettings} from './terrain';
 import {readEnvironment,type Environment} from './environment';
@@ -62,11 +63,12 @@ export function parseProject(raw:string):Project {
  const validId=(id:unknown):id is string=>typeof id==='string'&&id.length>0&&id.length<=200;
  const sceneId=p.sceneId??MAIN_SCENE,sceneName=p.sceneName??'Level 1';if(!validId(sceneId)||typeof sceneName!=='string'||!sceneName.trim()||sceneName.length>200)throw Error('Invalid active level');
  const levelIds=new Set<string>([sceneId]);const rawLevels=p.levels??[];if(!Array.isArray(rawLevels)||rawLevels.length>=MAX_SCENES)throw Error('Invalid level library');
- const levels:SceneData[]=rawLevels.map((l:any)=>{if(!l||!validId(l.id)||levelIds.has(l.id)||typeof l.name!=='string'||!l.name.trim()||l.name.length>200)throw Error('Invalid level');levelIds.add(l.id);return {id:l.id,name:l.name,entities:readEntities(l.entities),physics:readPhysics(l.physics),logic:readLogic(l.logic),audio:readAudio(l.audio),environment:readEnvironment(l.environment)};});
+ let soundCount=0;const readLevelAudio=(raw:unknown)=>{const audio=readAudio(raw);soundCount+=Object.keys(audio.samples??{}).length;if(soundCount>MAX_SOUND_REFERENCES)throw Error('Embedded sound limit exceeded');return audio;};
+ const levels:SceneData[]=rawLevels.map((l:any)=>{if(!l||!validId(l.id)||levelIds.has(l.id)||typeof l.name!=='string'||!l.name.trim()||l.name.length>200)throw Error('Invalid level');levelIds.add(l.id);return {id:l.id,name:l.name,entities:readEntities(l.entities),physics:readPhysics(l.physics),logic:readLogic(l.logic),audio:readLevelAudio(l.audio),environment:readEnvironment(l.environment)};});
  const sceneOrder=p.sceneOrder??[...levelIds];if(!Array.isArray(sceneOrder)||sceneOrder.length!==levelIds.size||new Set(sceneOrder).size!==levelIds.size||!sceneOrder.every((id:unknown)=>validId(id)&&levelIds.has(id)))throw Error('Invalid level order');
  const prefabIds=new Set<string>();const input=p.prefabs??[];
  if(!Array.isArray(input)||input.length>1000)throw Error('Invalid prefab library');
  const prefabs:Prefab[]=input.map((f:any)=>{if(!f||typeof f.id!=='string'||!f.id||f.id.length>200||prefabIds.has(f.id)||typeof f.name!=='string'||f.name.length>200)throw Error('Invalid prefab');prefabIds.add(f.id);const source=readEntity(f.source);if(source.role==='player')source.role='decoration';delete source.prefabId;return {id:f.id,name:f.name,source};});
  const prefabMap=new Map(prefabs.map(f=>[f.id,f.source.kind]));for(const e of [...entities,...levels.flatMap(l=>l.entities)])if(e.prefabId&&prefabMap.get(e.prefabId)!==e.kind)throw Error('Missing or incompatible prefab reference');
- return {version:1,name:p.name,entities,assets,prefabs,physics:readPhysics(p.physics),logic:readLogic(p.logic),audio:readAudio(p.audio),environment:readEnvironment(p.environment),presentation:readPresentation(p.presentation),graphics:readGraphics(p.graphics),...(p.sceneId!==undefined||p.sceneName!==undefined||p.levels!==undefined||p.sceneOrder!==undefined?{sceneId,sceneName,levels,sceneOrder}:{})};
+ return {version:1,name:p.name,entities,assets,prefabs,physics:readPhysics(p.physics),logic:readLogic(p.logic),audio:readLevelAudio(p.audio),environment:readEnvironment(p.environment),presentation:readPresentation(p.presentation),graphics:readGraphics(p.graphics),...(p.sceneId!==undefined||p.sceneName!==undefined||p.levels!==undefined||p.sceneOrder!==undefined?{sceneId,sceneName,levels,sceneOrder}:{})};
 }
