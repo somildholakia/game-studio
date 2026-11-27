@@ -197,3 +197,10 @@ it('blocks movement and supports landing on transformed custom mesh bounds',()=>
  let s=begin(p);for(let i=0;i<30;i++)s=step(p,s,{x:1,z:0},.05);expect(s.position[0]).toBeCloseTo(1.5);
  p.entities[0].position=[3,4,0];s=begin(p);for(let i=0;i<40;i++)s=step(p,s,{x:0,z:0},.05);expect(s.grounded).toBe(true);expect(s.position[1]).toBeCloseTo(2.5);
 });
+
+describe('moving one-way platforms',()=>{
+ function stage(offset:[number,number,number],period=4):Project{return {version:1,name:'Ride',entities:[{...entity('box'),role:'player',position:[0,1.9,0]},{...entity('box'),id:'ride',role:'platform',position:[0,1,0],scale:[2,.2,2],patrol:{offset,period}}]};}
+ it('carries the player horizontally and detaches when jumping',()=>{const p=stage([4,0,0]);let s=begin(p);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.platformId).toBe('ride');expect(s.position[0]).toBeGreaterThan(1.5);expect(s.position[1]).toBeCloseTo(1.9);const x=s.position[0];s=step(p,s,{x:0,z:0,jump:true},.05);expect(s.platformId).toBeNull();expect(s.position[0]).toBeCloseTo(x);expect(s.velocityY).toBeGreaterThan(0);});
+ it('supports ascending and descending elevators',()=>{const p=stage([0,2,0],2);let s=begin(p);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.platformId).toBe('ride');expect(s.position[1]).toBeCloseTo(3.9);for(let i=0;i<20;i++)s=step(p,s,{x:0,z:0},.05);expect(s.platformId).toBe('ride');expect(s.position[1]).toBeCloseTo(1.9);});
+ it('does not block horizontal motion beneath the support',()=>{const p=stage([0,0,0]);p.entities[0].position=[-3,.75,0];p.entities[1].position=[0,3,0];let s=begin(p);for(let i=0;i<30;i++)s=step(p,s,{x:1,z:0},.05);expect(s.position[0]).toBeGreaterThan(2);expect(s.platformId).toBeNull();});
+});

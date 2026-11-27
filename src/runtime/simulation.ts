@@ -3,15 +3,15 @@ import {bounds,overlaps,moveAxis,indexBounds,combineBounds,type Bounds} from './
 import {defaultLogic,trigger,matchesCounter,type LogicState,type CounterCondition} from './rules';
 import {compileTerrain} from '../core/terrain';
 import {compileBodies,initialBodies,advanceBodies,bodyBounds,type BodyStates} from './bodies';
-import {triggerSpec,triggerBounds} from './patrol';
+import {triggerSpec,triggerBounds,MAX_PLATFORMS} from './patrol';
 import {defaults} from './physicsSettings';
 export type Input={x:number;z:number;jump?:boolean};
-export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;jumpHeld:boolean;coyoteRemaining:number;bufferRemaining:number;jumps:number;respawns:number;logic:LogicState;insideGoal:boolean;insideGoalIds:ReadonlySet<string>;insideZoneIds:ReadonlySet<string>;openGates:ReadonlySet<string>;checkpointId:string|null;respawnPosition:Vec3;bodies:BodyStates;elapsed:number};
+export type GameState={position:Vec3;collected:ReadonlySet<string>;won:boolean;velocityY:number;grounded:boolean;platformId:string|null;jumpHeld:boolean;coyoteRemaining:number;bufferRemaining:number;jumps:number;respawns:number;logic:LogicState;insideGoal:boolean;insideGoalIds:ReadonlySet<string>;insideZoneIds:ReadonlySet<string>;openGates:ReadonlySet<string>;checkpointId:string|null;respawnPosition:Vec3;bodies:BodyStates;elapsed:number};
 export function begin(project:Project):GameState {
  const spawn=project.entities.find(e=>e.role==='player');
  if(!spawn)throw Error('Add a player spawn before playing.');
  const logic=trigger(project.logic??defaultLogic,{score:0,message:'',won:false},'start');
- return {position:[...spawn.position],collected:new Set(),won:logic.won,velocityY:0,grounded:false,jumpHeld:false,coyoteRemaining:0,bufferRemaining:0,jumps:0,respawns:0,logic,insideGoal:false,insideGoalIds:new Set(),insideZoneIds:new Set(),openGates:new Set(project.entities.filter(e=>e.role==='solid'&&e.gate&&matchesCounter(logic,e.gate)).map(e=>e.id)),checkpointId:null,respawnPosition:[...spawn.position],bodies:initialBodies(compileBodies(project)),elapsed:0};
+ return {position:[...spawn.position],collected:new Set(),won:logic.won,velocityY:0,grounded:false,platformId:null,jumpHeld:false,coyoteRemaining:0,bufferRemaining:0,jumps:0,respawns:0,logic,insideGoal:false,insideGoalIds:new Set(),insideZoneIds:new Set(),openGates:new Set(project.entities.filter(e=>e.role==='solid'&&e.gate&&matchesCounter(logic,e.gate)).map(e=>e.id)),checkpointId:null,respawnPosition:[...spawn.position],bodies:initialBodies(compileBodies(project)),elapsed:0};
 }
 export function compileWorld(project:Project){
  const spawn=project.entities.find(e=>e.role==='player');if(!spawn)throw Error('Add a player spawn before playing.');
@@ -22,13 +22,14 @@ export function compileWorld(project:Project){
  const floors=project.entities.filter(e=>e.kind==='ground').map(bounds);
  // Preserve legacy worlds without an explicit ground; use an implicit horizontal plane.
  if(!floors.length&&!terrains.length)floors.push({center:[0,0,0],half:[Infinity,0,Infinity]});
+ const platforms=project.entities.filter(e=>e.role==='platform').map(triggerSpec);if(platforms.length>MAX_PLATFORMS)throw Error('Maximum 128 platforms per level');
  const pickups=project.entities.filter(e=>e.role==='collectible').map(triggerSpec);
  const goals=project.entities.filter(e=>e.role==='goal').map(e=>({id:e.id,bounds:bounds(e)}));
  const bodies=compileBodies(project);
  const hazards=project.entities.filter(e=>e.role==='hazard').map(triggerSpec);
  const zones=project.entities.filter(e=>e.role==='trigger').map(e=>({id:e.id,bounds:bounds(e)}));
  const checkpoints=project.entities.filter(e=>e.role==='checkpoint').map(e=>({id:e.id,bounds:bounds(e)}));
- return {spawn:spawn.position,half,solids,solidIndex:indexBounds(solids),gates,floors,terrains,pickups,goals,bodies,hazards,checkpoints,zones,settings:project.physics??defaults,logic:project.logic??defaultLogic};
+ return {spawn:spawn.position,half,solids,solidIndex:indexBounds(solids),gates,floors,terrains,platforms,pickups,goals,bodies,hazards,checkpoints,zones,settings:project.physics??defaults,logic:project.logic??defaultLogic};
 }
 type World=ReturnType<typeof compileWorld>;
 function updateGates(world:World,logic:LogicState,previous:ReadonlySet<string>,player:Bounds,bodies:BodyStates):ReadonlySet<string>{
@@ -42,6 +43,9 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  const staticSolids=combineBounds(world.solidIndex,world.gates.filter(g=>!state.openGates.has(g.id)).map(g=>g.bounds));
  const bodies=world.bodies.length?advanceBodies(world.bodies,state.bodies,staticSolids,floors,terrains,settings.gravity,settings.fallLimit,dt,{center:p,half},[input.x*speed/dt,0,input.z*speed/dt]):state.bodies;
  const solids=world.bodies.length?combineBounds(staticSolids,world.bodies.map(spec=>bodyBounds(spec,bodies.get(spec.id)!))):staticSolids;
+ const platforms=world.platforms.map(spec=>({id:spec.id,old:triggerBounds(spec,state.elapsed),next:triggerBounds(spec,elapsed)}));
+ const rider=state.grounded&&!jumped?platforms.find(b=>b.id===state.platformId&&overlaps(p,half,b.old,[0,2])&&Math.abs(p[1]-half[1]-b.old.center[1]-b.old.half[1])<.001):undefined;
+ if(rider){for(const axis of [0,2] as const)p[axis]=moveAxis(p,half,axis,rider.next.center[axis]-rider.old.center[axis],solids).position;}
  p[0]=moveAxis(p,half,0,input.x*speed,solids).position;
  p[2]=moveAxis(p,half,2,input.z*speed,solids).position;
  // Follow the terrain surface only when already grounded on it, or crossing it from above.
@@ -57,11 +61,15 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  if(vy<=0)for(const floor of floors){const top=floor.center[1]+floor.half[1]+half[1];if(overlaps(p,half,floor,[0,2])&&p[1]>=top-1e-6&&nextY<=top){nextY=Math.max(nextY,top);landed=true;}}
  if(vy<=0&&Number.isFinite(surface)){const top=surface+half[1];const crossing=p[1]>=top-1e-6&&nextY<=top;const downhill=wasOnTerrain&&!jumped&&Math.abs(surface-oldSurface)<=.5&&p[1]>=top-1e-6;
  if(crossing||downhill){const contact=moveAxis(p,half,1,top-p[1],solids);if(!contact.hit&&(!landed||top>=nextY)){nextY=top;landed=true;}}}
+ let platformId:string|null=null;
+ // One-way supports: land from above, or follow an existing rider as the top moves.
+ if(vy<=0&&!jumped)for(const b of platforms){const top=b.next.center[1]+b.next.half[1]+half[1],oldTop=b.old.center[1]+b.old.half[1]+half[1];
+ if(overlaps(p,half,b.next,[0,2])&&state.position[1]>=oldTop-1e-6&&(nextY<=top||rider?.id===b.id)&&(!landed||top>=nextY)&&!moveAxis(p,half,1,top-p[1],solids).hit){nextY=top;landed=true;platformId=b.id;}}
  p[1]=nextY;if(vertical.hit||landed)vy=0;
  if(p[1]<settings.fallLimit||world.hazards.some(b=>overlaps(p,half,triggerBounds(b,elapsed)))){
  const deaths=state.respawns+1;
- if(world.logic.maxLives!==undefined&&deaths>=world.logic.maxLives){return {...state,position:p,velocityY:0,grounded:false,coyoteRemaining:0,bufferRemaining:0,respawns:deaths,bodies,elapsed,logic:{...state.logic,lost:true,message:'No lives remaining'},won:false};}
- const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,coyoteRemaining:0,bufferRemaining:0,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false,insideGoalIds:new Set(),insideZoneIds:new Set(),openGates:updateGates(world,logic,state.openGates,{center:state.respawnPosition,half},bodies)};}
+ if(world.logic.maxLives!==undefined&&deaths>=world.logic.maxLives){return {...state,position:p,velocityY:0,grounded:false,platformId:null,coyoteRemaining:0,bufferRemaining:0,respawns:deaths,bodies,elapsed,logic:{...state.logic,lost:true,message:'No lives remaining'},won:false};}
+ const logic=trigger(world.logic,{score:0,message:'',won:false},'respawn');return {...state,position:[...state.respawnPosition],velocityY:0,grounded:false,platformId:null,coyoteRemaining:0,bufferRemaining:0,collected:new Set(),respawns:state.respawns+1,bodies,elapsed,logic,won:logic.won,insideGoal:false,insideGoalIds:new Set(),insideZoneIds:new Set(),openGates:updateGates(world,logic,state.openGates,{center:state.respawnPosition,half},bodies)};}
  const collected=new Set(state.collected);let logic=state.logic;if(jumped)logic=trigger(world.logic,logic,'jump');if(Math.floor(elapsed+1e-9)>Math.floor(state.elapsed+1e-9))logic=trigger(world.logic,logic,'second',undefined,Math.floor(elapsed+1e-9));let checkpointId=state.checkpointId;let respawnPosition=state.respawnPosition;
  const checkpoint=world.checkpoints.find(c=>overlaps(p,half,c.bounds));if(checkpoint&&checkpoint.id!==checkpointId){checkpointId=checkpoint.id;respawnPosition=[checkpoint.bounds.center[0],checkpoint.bounds.center[1]+checkpoint.bounds.half[1]+half[1]+.05,checkpoint.bounds.center[2]];logic=trigger(world.logic,logic,'checkpoint',checkpoint.id);}
  for(const item of world.pickups)if(!collected.has(item.id)&&overlaps(p,half,triggerBounds(item,elapsed))){collected.add(item.id);logic=trigger(world.logic,logic,'collect',item.id);}
@@ -72,7 +80,7 @@ function integrate(world:World,state:GameState,input:Input,dt:number,jump:boolea
  for(const zone of world.zones)if(state.insideZoneIds.has(zone.id)&&!insideZoneIds.has(zone.id))logic=trigger(world.logic,logic,'zone-exit',zone.id);
  for(const zone of world.zones)if(insideZoneIds.has(zone.id)&&!state.insideZoneIds.has(zone.id))logic=trigger(world.logic,logic,'zone-enter',zone.id);
  const won=!logic.lost&&(logic.won||(world.logic.autoWin&&insideGoal&&world.pickups.every(e=>collected.has(e.id))));
- return {...state,position:p,velocityY:vy,grounded:landed,coyoteRemaining:jumped?0:landed?(settings.coyoteTime??0):Math.max(0,state.coyoteRemaining-dt),bufferRemaining:jumped?0:Math.max(0,queued-dt),jumps:state.jumps+Number(jumped),collected,won,logic,insideGoal,insideGoalIds,insideZoneIds,openGates:updateGates(world,logic,state.openGates,{center:p,half},bodies),checkpointId,respawnPosition,bodies,elapsed};
+ return {...state,position:p,velocityY:vy,grounded:landed,platformId,coyoteRemaining:jumped?0:landed?(settings.coyoteTime??0):Math.max(0,state.coyoteRemaining-dt),bufferRemaining:jumped?0:Math.max(0,queued-dt),jumps:state.jumps+Number(jumped),collected,won,logic,insideGoal,insideGoalIds,insideZoneIds,openGates:updateGates(world,logic,state.openGates,{center:p,half},bodies),checkpointId,respawnPosition,bodies,elapsed};
 }
 export function advance(world:World,state:GameState,input:Input,dt:number):GameState{
  if(state.won||state.logic.lost)return state;
