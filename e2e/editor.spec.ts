@@ -52,7 +52,7 @@ test('edit topology and capture animation poses',async({page})=>{
 test('preview, approve and undo a declarative AI edit',async({page})=>{
  await page.goto('/');
  const ai=page.getByRole('group',{name:'AI Studio · Command preview',exact:true});
- await ai.getByLabel('JSON edit plan').fill(JSON.stringify({version:1,summary:'Add a wall',commands:[{op:'add',kind:'box',patch:{name:'AI test wall',role:'solid',position:[2,1,0]}}]}));
+ await ai.getByLabel('JSON edit plan').fill(JSON.stringify({version:1,summary:'Add a wall',commands:[{op:'add',kind:'box',ref:'wall',patch:{name:'Draft wall',role:'solid',position:[2,1,0]}},{op:'edit',id:'@wall',patch:{name:'AI test wall'}}]}));
  await ai.getByRole('button',{name:'Validate and preview'}).click();
  await expect(ai.getByText('Add: AI test wall (box)',{exact:true})).toBeVisible();
  const wall=page.getByRole('button',{name:'AI test wall solid',exact:true});
@@ -653,4 +653,19 @@ test('review and resolve independent collaborator project changes with undo',asy
  await page.getByRole('button',{name:'Local cube',exact:true}).click();await expect(page.getByLabel('Color',{exact:true})).toHaveValue('#abcdef');
  await expect(page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true})).toHaveValue('4');
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByLabel('Color',{exact:true})).toHaveValue('#123456');
+});
+
+test('AI preview warns about an unplayable generated level before approval',async({page})=>{
+ await page.goto('/');
+ const ai=page.getByRole('group',{name:'AI Studio · Command preview',exact:true});
+ await ai.getByLabel('JSON edit plan').fill(JSON.stringify({version:1,summary:'Incomplete level draft',commands:[
+  {op:'add-level',name:'Draft level'},
+  {op:'add',kind:'box',ref:'spawn',patch:{role:'player',name:'Temporary player'}},
+  {op:'delete',id:'@spawn'}
+ ]}));
+ await ai.getByRole('button',{name:'Validate and preview'}).click();
+ await expect(ai.getByText(/^Playability checks/)).toBeVisible();
+ await expect(ai.getByText('Error · Draft level: Add a player spawn.',{exact:true})).toBeVisible();
+ await expect(ai.getByRole('button',{name:'Apply as one undoable edit'})).toBeEnabled();
+ await expect(ai.getByText('Add level: Draft level',{exact:true})).toBeVisible();
 });
