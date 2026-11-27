@@ -13,7 +13,7 @@ const equal=(a:Value,b:Value):boolean=>{
 };
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const idArray=(v:unknown):v is {id:string}[]=>Array.isArray(v)&&v.every(x=>record(x)&&typeof x.id==='string');
-const escape=(s:string)=>s.replace(/~/g,'~0').replace(/\//g,'~1');
+const escape=(s:string)=>s==='@order'?'~2order':s.replace(/~/g,'~0').replace(/\//g,'~1');
 const summarize=(v:unknown)=>{if(v===undefined)return '(deleted)';const s=JSON.stringify(v);return s.length>240?s.slice(0,237)+'…':s;};
 function normalized(p:Project){
  const parsed=parseProject(JSON.stringify(p)),{entities,physics,logic,audio,environment,sceneId,sceneName,levels,sceneOrder,...global}=parsed;
@@ -39,13 +39,18 @@ export function mergeProjects(base:Project,local:Project,incoming:Project,choice
    const common=ids.filter(id=>maps.every(m=>m.has(id))&&merged.has(id)),set=new Set(common);
    const order=merge(o.filter(x=>set.has(x.id)).map(x=>x.id),a.filter(x=>set.has(x.id)).map(x=>x.id),b.filter(x=>set.has(x.id)).map(x=>x.id),path+'/@order',depth+1) as string[];
    // Preserve the chosen common ordering and insert newly added IDs relative to their nearest existing predecessor/successor.
-   const result=[...order];
-   for(const source of [a,b,o])for(let i=0;i<source.length;i++){
-    const id=source[i].id;if(!merged.has(id)||result.includes(id))continue;
-    const prev=source.slice(0,i).reverse().find(x=>result.includes(x.id)),next=source.slice(i+1).find(x=>result.includes(x.id));
-    if(prev)result.splice(result.indexOf(prev.id)+1,0,id);else if(next)result.splice(result.indexOf(next.id),0,id);else result.push(id);
+   type Link={id:string;prev:Link|null;next:Link|null};
+   const links=new Map<string,Link>();let head:Link|null=null,tail:Link|null=null;
+   function insert(id:string,prev:Link|null){const next=prev?prev.next:head,node:Link={id,prev,next};links.set(id,node);if(prev)prev.next=node;else head=node;if(next)next.prev=node;else tail=node;return node;}
+   for(const id of order)insert(id,tail);
+   for(const source of [a,b,o]){
+    const following:(Link|null)[]=Array(source.length).fill(null);let next:Link|null=null;
+    for(let i=source.length-1;i>=0;i--){following[i]=next;next=links.get(source[i].id)??next;}
+    let prev:Link|null=null;
+    for(let i=0;i<source.length;i++){const id=source[i].id;if(!merged.has(id))continue;const known=links.get(id);if(known){prev=known;continue;}const anchor=following[i];prev=insert(id,prev??(anchor?anchor.prev:tail));}
    }
-   return result.map(id=>merged.get(id));
+   const result:unknown[]=[];for(let node=head as Link|null;node;node=node.next)result.push(merged.get(node.id));
+   return result;
   }
   // Coupled structures cannot be merged independently (e.g. modifier source and evaluated cache).
   if(['mesh','meshModifiers','rig','shader','animation','material','body','terrain'].includes(key))return conflict(a,b,path);
