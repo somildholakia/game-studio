@@ -1,6 +1,7 @@
 import {Engine,Scene,ArcRotateCamera,Vector3,Mesh,MeshBuilder,StandardMaterial,Color3,type AssetContainer} from '@babylonjs/core';
 import {createShadows} from './shadows';
 import {defaultGraphics,type GraphicsSettings,type RenderMetrics} from '../core/graphics';
+import {createRuntimeProfiler} from '../core/runtimeProfile';
 import {defaultPresentation} from '../core/presentation';
 import {syncCharacterRig,animateCharacterRig,animateDecorativeRig} from './characterRig';
 import {createEnvironment} from './environment';
@@ -22,7 +23,7 @@ export type PlayStatus={collected:number;total:number;won:boolean;lost?:boolean;
 export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>void,onError:(message:string)=>void=()=>{},onTransform?:(id:string,transform:Transform)=>void,onMetrics?:(m:RenderMetrics)=>void,onVertexPick?:(index:number)=>void,onContextStatus?:(lost:boolean)=>void) {
  const engine=new Engine(canvas,true);const scene=new Scene(engine);
  const camera=new ArcRotateCamera('camera',-Math.PI/2,Math.PI/3,12,new Vector3(0,1,0),scene);camera.attachControl(canvas,true);
- const environment=createEnvironment(scene);const shadows=createShadows(environment.sun);let graphics:GraphicsSettings=defaultGraphics;let lastMetrics=0;
+ const environment=createEnvironment(scene);const shadows=createShadows(environment.sun);let graphics:GraphicsSettings=defaultGraphics;let lastMetrics=0;const profiler=createRuntimeProfiler();
  const refreshShadows=()=>{if(!contextLost)shadows.sync(graphics,Array.from(meshes.values(),entry=>entry.mesh));};
  const gizmos=onTransform?createGizmos(scene,onTransform):null;let selected='';let tool:Tool='move';let snap=false;let previewing=false;let vertexMode=false;let vertexIndex=0;let authored:Project|null=null;
  const marker=onVertexPick?MeshBuilder.CreateSphere('editor-vertex-marker',{diameter:.12,segments:8},scene):null;
@@ -63,12 +64,13 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const render=()=>{
  if(contextLost||disposed)return;
  const delta=skipDelta?0:engine.getDeltaTime()/1000;skipDelta=false;
+ const profile=!!onMetrics&&!!run&&!paused&&!run.state.won&&!run.state.logic.lost&&!document.hidden&&delta>0;let simulationMs=0;
  if(run&&!paused){
  const pad=pollGamepad(()=>document.hidden?[]:navigator.getGamepads?.()??[]);
  const horizontal=Number(touch.has('right')||keys.has('d')||keys.has('arrowright'))-Number(touch.has('left')||keys.has('a')||keys.has('arrowleft'));
  const vertical=Number(touch.has('up')||keys.has('w')||keys.has('arrowup'))-Number(touch.has('down')||keys.has('s')||keys.has('arrowdown'));
  const input={x:horizontal||pad.x,z:vertical||pad.z,jump:touch.has('jump')||keys.has(' ')||pad.jump};
- const dt=delta;const before=run.state;run.state=advance(run.world,run.state,input,dt);const sound=run.project.audio??defaultAudio;
+ const dt=delta;const before=run.state;const simStart=profile?performance.now():0;run.state=advance(run.world,run.state,input,dt);if(profile)simulationMs=performance.now()-simStart;const sound=run.project.audio??defaultAudio;
  if(run.state.respawns>before.respawns)audio.play(sound,'respawn');else if(run.state.collected.size>before.collected.size)audio.play(sound,'collect');if(run.state.jumps>before.jumps)audio.play(sound,'jump');if(!before.won&&run.state.won)audio.play(sound,'win');if(!before.logic.lost&&run.state.logic.lost)audio.play(sound,'lose');if(before.checkpointId!==run.state.checkpointId)audio.play(sound,'checkpoint');applyAnimation(run.project,run.state.elapsed);
  const player=meshes.get(run.player)?.mesh;player?.position.set(...run.state.position);if(player){const actor=run.project.entities.find(e=>e.id===run!.player);if(actor?.kind==='character'){const dx=run.state.position[0]-before.position[0],dz=run.state.position[2]-before.position[2];const moving=run.state.respawns===before.respawns&&Math.hypot(dx,dz)>1e-5;if(moving)player.rotation.y=Math.atan2(dx,dz);animateCharacterRig(player,actor.rig,run.state.elapsed,moving,run.state.grounded);}}
  for(const [id,body] of run.state.bodies)meshes.get(id)?.mesh.position.set(...body.position);
@@ -80,15 +82,15 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  }
  for(const [id,mesh] of ghosts){const target=ghostTargets.get(id);if(target){const to=new Vector3(...target);if(Vector3.DistanceSquared(mesh.position,to)>100)mesh.position.copyFrom(to);else Vector3.LerpToRef(mesh.position,to,Math.min(1,delta*12),mesh.position);}}
  if(marker){const point=!run&&!previewing&&vertexMode?vertexPoint(vertexIndex):null;marker.setEnabled(!!point);if(point){marker.position.copyFrom(point);marker.scaling.setAll(Math.max(.2,camera.radius/12));}}
- scene.render();if(onMetrics&&performance.now()-lastMetrics>=750){lastMetrics=performance.now();onMetrics({fps:Math.round(engine.getFps()),meshes:scene.meshes.length,vertices:scene.getTotalVertices(),width:engine.getRenderWidth(),height:engine.getRenderHeight()});}};
- const lostObserver=engine.onContextLostObservable.add(()=>{if(disposed||contextLost)return;contextLost=true;clear();audio.stop();onContextStatus?.(true);});
+ const renderStart=profile?performance.now():0;scene.render();if(profile)profiler.record(delta*1000,simulationMs,performance.now()-renderStart);if(onMetrics&&performance.now()-lastMetrics>=750){lastMetrics=performance.now();onMetrics({fps:Math.round(engine.getFps()),meshes:scene.meshes.length,vertices:scene.getTotalVertices(),width:engine.getRenderWidth(),height:engine.getRenderHeight(),...(run?{runtime:profiler.snapshot()}:{})});}};
+ const lostObserver=engine.onContextLostObservable.add(()=>{if(disposed||contextLost)return;contextLost=true;profiler.reset();clear();audio.stop();onContextStatus?.(true);});
  const restoreObserver=engine.onContextRestoredObservable.add(()=>{if(disposed)return;contextLost=false;skipDelta=true;clear();try{engine.resize();if(pendingSync&&authored)sync(authored);if(!run&&authored&&previewTime!==null)applyAnimation(authored,previewTime);refreshShadows();refreshGizmo();onContextStatus?.(false);}catch(error){contextLost=true;onError('Graphics restoration failed: '+String(error));}});
  engine.runRenderLoop(render);
  const observer=new ResizeObserver(()=>{if(!contextLost)engine.resize();});observer.observe(canvas);
  return {sync,getPosition():Vec3|null{return run?[...run.state.position]:null;},setPeers,setVertexMode(enabled:boolean,index:number){vertexMode=enabled;vertexIndex=index;refreshGizmo();},setPaused(value:boolean){if(contextLost||!run||run.state.won||run.state.logic.lost)return false;paused=value;clear();if(paused)audio.stop();else canvas.focus({preventScroll:true});return true;},setControl(c:Control,active:boolean){if(!run||paused||contextLost)return;if(active){touch.add(c);if(run.project.audio?.enabled)unlock();}else touch.delete(c);},unlockAudio:unlock,preview(project:Project,time:number|null){if(run)return;previewTime=time;previewing=time!==null;sync(project);if(!contextLost&&time!==null)applyAnimation(project,time);refreshGizmo();},setTool(id:string,next:Tool,snapping:boolean){selected=id;tool=next;snap=snapping;refreshGizmo();},start(project:Project,notify:(s:PlayStatus)=>void){
  if(contextLost)throw Error('Graphics context is recovering. Try again after restoration.');
- const state=begin(project);const player=project.entities.find(e=>e.role==='player')!;
+ profiler.reset();const state=begin(project);const player=project.entities.find(e=>e.role==='player')!;
  clearGhosts();paused=false;previewing=false;previewTime=null;sync(project);clear();audio.stop();if(project.audio?.enabled){void audio.unlock().then(()=>{if(run?.project===project&&!paused&&!contextLost)audio.play(project.audio!,'start');}).catch(()=>{});}camera.detachControl();camera.alpha=-Math.PI/2;camera.beta=(project.presentation??defaultPresentation).camera==='overhead' ? .08 : .65;camera.radius=(project.presentation??defaultPresentation).distance;run={project,state,world:compileWorld(project),player:player.id,notify,last:'',total:project.entities.filter(e=>e.role==='collectible').length};for(const e of project.entities)if(e.role==='trigger')meshes.get(e.id)?.mesh.setEnabled(false);canvas.focus({preventScroll:true});refreshGizmo();
- },stop(project:Project){clearGhosts();run=null;paused=false;previewing=false;previewTime=null;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
+ },stop(project:Project){profiler.reset();clearGhosts();run=null;paused=false;previewing=false;previewTime=null;clear();audio.stop();sync(project);camera.setTarget(new Vector3(0,1,0));camera.attachControl(canvas,true);},
  dispose(){disposed=true;assetQueue.close();clearGhosts();engine.onContextLostObservable.remove(lostObserver);engine.onContextRestoredObservable.remove(restoreObserver);run=null;audio.dispose();canvas.removeEventListener('pointerdown',unlock);gizmos?.dispose();marker?.dispose(false,true);shadows.dispose();for(const entry of meshes.values())destroy(entry);meshes.clear();observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);canvas.removeEventListener('blur',clearKeys);engine.stopRenderLoop(render);scene.dispose();engine.dispose();}};
 }

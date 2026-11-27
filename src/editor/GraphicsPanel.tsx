@@ -7,5 +7,6 @@ export function GraphicsPanel({value,onChange,disabled,metrics}:{value?:Graphics
  <label>Shadow resolution<select disabled={!g.shadows} value={g.shadowSize} onChange={e=>onChange({...g,shadowSize:Number(e.target.value) as GraphicsSettings['shadowSize']})}>{[512,1024,2048].map(size=><option key={size} value={size}>{size}</option>)}</select></label>
  <button onClick={()=>onChange({...defaultGraphics})}>Reset graphics</button>
  {metrics&&<dl className="render-metrics"><dt>Frame rate</dt><dd>{metrics.fps} FPS</dd><dt>Meshes</dt><dd>{metrics.meshes}</dd><dt>Total vertices</dt><dd>{metrics.vertices}</dd><dt>Render buffer</dt><dd>{metrics.width} × {metrics.height}</dd></dl>}
+ {metrics?.runtime&&<div><p className="hint">Recent active gameplay frames (up to 180); render-submit time is CPU, not GPU timing.</p><dl className="runtime-profile"><dt>Samples</dt><dd data-testid="runtime-samples">{metrics.runtime.frame.samples}</dd><dt>Frame p95 (ms)</dt><dd data-testid="runtime-frame-p95">{metrics.runtime.frame.p95Ms}</dd><dt>Simulation p95 (ms)</dt><dd data-testid="runtime-sim-p95">{metrics.runtime.simulation.p95Ms}</dd><dt>Render submit p95 (ms)</dt><dd data-testid="runtime-render-p95">{metrics.runtime.renderSubmit.p95Ms}</dd></dl></div>}
  </fieldset>;
 }
