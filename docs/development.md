@@ -64,3 +64,6 @@ See [reference performance budgets](performance-budgets.md) for the reproducible
 
 ## GPU shader graph
 Shader Studio accepts a bounded 1–16 node, topologically ordered color graph on primitives/custom meshes/terrain. It compiles to a local unlit GLSL material, with base color, RGB constants, coordinate gradients, repeating bands, mixing and multiplication. It uses the same renderer in editor and standalone games. Undo, reload and prefab appearance propagation preserve graphs. Applying a material preset or Restore PBR returns to the regular PBR renderer; PBR settings are retained while the graph is active. Imported models and articulated characters do not support graph overrides. GLB mesh export remains solid PBR only. No arbitrary GLSL, textures in graphs, lighting nodes, external resources or shader imports; this is a basic shader editing workflow, not a full professional node editor.
+
+## Operational telemetry
+The local development server exposes bounded, credential-free aggregate metrics via a same-origin POST endpoint. See [monitoring, load and incident plan](operations.md) for the local endpoint, reference load tests, proposed production targets, incident ownership and required drills.

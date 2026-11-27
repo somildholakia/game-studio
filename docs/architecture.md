@@ -25,3 +25,6 @@ Manual-first browser authoring with beginner and expert workflows. Benchmark Unr
 
 ## Release gates
 Reproducible lockfile, CI typecheck/test/build, browser E2E coverage, import fuzzing, CSP, accessibility, dependency/license audit, GPU/device benchmarks, memory budgets, crash recovery, tenant isolation, backup restore and measured load tests. Million-user capacity is a target, not a verified property. Measure active users, concurrency, storage and bandwidth separately.
+
+## Operational boundary
+The local gateway telemetry stores fixed-route counters and a bounded latency window, without request data. See [operations](operations.md) for future production monitoring, incident handling, load tests and durability targets. These are not deployed production services.
