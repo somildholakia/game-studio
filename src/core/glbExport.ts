@@ -1,19 +1,20 @@
+import {cornerNormals} from './meshNormals';
 import {readMesh} from './mesh';
 import {projectUV} from './uv';
 import {validateGlb} from './assets';
 import type {Entity,Vec3} from './project';
 const align=(n:number)=>(n+3)&~3;
 function linear(hex:string){return [1,3,5].map(i=>{const c=parseInt(hex.slice(i,i+2),16)/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;});}
-/** Local-space custom geometry, flat normals, UVs and solid PBR factors. No external resources. */
+/** Local-space custom geometry, flat or smooth normals, UVs and solid PBR factors. No external resources. */
 export function meshToGlb(e:Entity):Uint8Array<ArrayBuffer>{
  if(e.kind!=='mesh'||!e.mesh)throw Error('Choose a custom mesh');
- const mesh=readMesh(e.mesh),uv=projectUV(mesh,e.uvProjection);
+ const mesh=readMesh(e.mesh),uv=projectUV(mesh,e.uvProjection),shading=cornerNormals(mesh,e.smoothNormals);
  const positions:number[]=[],normals:number[]=[],texcoords:number[]=[];
  for(let i=0;i<mesh.triangles.length;i++){
  const face=mesh.triangles[i];const [a,b,c]=face.map(j=>{const v=mesh.vertices[j];return [v[0],v[1],-v[2]] as Vec3;});
  const u=b.map((n,k)=>n-a[k]),v=c.map((n,k)=>n-a[k]);const normal=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
  const length=Math.hypot(...normal);if(length<1e-9)continue;
- positions.push(...a,...b,...c);for(let j=0;j<3;j++){normals.push(...normal.map(n=>n/length));texcoords.push(uv[i*3+j][0],1-uv[i*3+j][1]);}
+ positions.push(...a,...b,...c);for(let j=0;j<3;j++){const n=shading[i*3+j];normals.push(n[0],n[1],-n[2]);texcoords.push(uv[i*3+j][0],1-uv[i*3+j][1]);}
  }
  if(!positions.length)throw Error('Mesh has no nondegenerate triangles');
  const arrays=[positions,normals,texcoords].map(v=>Float32Array.from(v));

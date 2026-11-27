@@ -23,7 +23,7 @@ export function updatePrefab(p:Project,id:string,selected:Entity):Project{
  const old=p.prefabs?.find(f=>f.id===id);if(!old||selected.kind!==old.source.kind)throw Error('Select an object of the same kind as the prefab');
  const source=structuredClone(selected);delete source.prefabId;if(source.role==='player')source.role='decoration';
  // Explicit propagation updates reusable appearance, while preserving local gameplay and placement.
- const apply=(e:Entity):Entity=>e.prefabId!==id?e:{...e,color:source.color,material:structuredClone(source.material),character:structuredClone(source.character),rig:structuredClone(source.rig),mesh:structuredClone(source.mesh),uvProjection:source.uvProjection,terrain:structuredClone(source.terrain),assetId:source.assetId};
+ const apply=(e:Entity):Entity=>e.prefabId!==id?e:{...e,color:source.color,material:structuredClone(source.material),character:structuredClone(source.character),rig:structuredClone(source.rig),mesh:structuredClone(source.mesh),uvProjection:source.uvProjection,smoothNormals:source.smoothNormals,terrain:structuredClone(source.terrain),assetId:source.assetId};
  return parseProject(JSON.stringify({...p,prefabs:p.prefabs!.map(f=>f.id===id?{...f,source}:f),entities:p.entities.map(apply),levels:p.levels?.map(l=>({...l,entities:l.entities.map(apply)}))}));
 }
 export function detachPrefab(e:Entity):Entity{const next={...e};delete next.prefabId;return next;}
