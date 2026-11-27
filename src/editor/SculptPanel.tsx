@@ -1,0 +1,6 @@
+import {useState} from 'react';
+import {sculpt,type BrushMode} from '../core/sculpt';import type {MeshData} from '../core/mesh';
+export function SculptPanel({mesh,index,onChange,onError}:{mesh:MeshData;index:number;onChange:(m:MeshData)=>void;onError:(s:string)=>void}){
+ const [radius,setRadius]=useState(1.5),[strength,setStrength]=useState(.25),[mode,setMode]=useState<BrushMode>('inflate');
+ return <fieldset><legend>Sculpt brush</legend><p className="hint">Select a vertex, then apply a local-space brush with radial falloff. Each stroke is undoable.</p><label>Brush mode<select value={mode} onChange={e=>setMode(e.target.value as BrushMode)}>{['inflate','deflate','smooth'].map(m=><option key={m}>{m}</option>)}</select></label><label>Brush radius<input type="number" min=".01" max="100" step=".1" value={radius} onChange={e=>{const n=e.target.valueAsNumber;if(Number.isFinite(n)&&n>=.01&&n<=100)setRadius(n);}}/></label><label>Brush strength<input type="range" min=".01" max="1" step=".01" value={strength} onChange={e=>setStrength(e.target.valueAsNumber)}/></label><button onClick={()=>{try{onChange(sculpt(mesh,index,radius,strength,mode));}catch(e){onError(String(e));}}}>Apply brush stroke</button></fieldset>;
+}

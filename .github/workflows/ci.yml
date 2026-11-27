@@ -1,0 +1,58 @@
+name: Validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/dependency-review.mjs
+      - run: npm test
+      - name: Audit locked dependencies
+        shell: bash
+        run: npm audit --audit-level=high --json | tee reports/npm-audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-security-review
+          path: |
+            reports/dependency-review.json
+            reports/npm-audit.json
+          if-no-files-found: ignore
+      - run: npm run build
+      - run: node --test scripts/*.test.mjs
+      - run: node scripts/room-load.mjs reports/room-load.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-room-load
+          path: reports/room-load.json
+          if-no-files-found: ignore
+      - run: node scripts/static-release.mjs write dist
+      - run: node scripts/static-release.mjs verify dist
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-editor-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-results
+          path: test-results/
+          if-no-files-found: ignore

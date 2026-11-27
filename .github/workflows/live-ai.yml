@@ -1,0 +1,53 @@
+name: Live AI acceptance (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Authorized provider
+        type: choice
+        options: [openai, openrouter, anthropic]
+        required: true
+      model:
+        description: Exact model ID from the selected provider
+        type: string
+        required: true
+      confirm_cost:
+        description: I authorize five real synthetic model requests and any provider charges
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: game-studio-live-ai
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    if: inputs.confirm_cost == true
+    environment: live-ai-acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Run live synthetic evaluation
+        env:
+          GAME_STUDIO_LIVE_AI: '1'
+          GAME_STUDIO_AI_PROVIDER: ${{ inputs.provider }}
+          GAME_STUDIO_AI_MODEL: ${{ inputs.model }}
+          OPENAI_API_KEY: ${{ inputs.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          OPENROUTER_API_KEY: ${{ inputs.provider == 'openrouter' && secrets.OPENROUTER_API_KEY || '' }}
+          ANTHROPIC_API_KEY: ${{ inputs.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
+        run: npx vitest run scripts/live-ai-evaluation.test.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-ai-evaluation
+          path: reports/live-ai-evaluation.json
+          if-no-files-found: error
+          retention-days: 14
