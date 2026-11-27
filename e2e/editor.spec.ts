@@ -564,3 +564,15 @@ test('author a bounded GPU shader, persist it and use it in exported play',async
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export playable HTML'}).click();const file=await download;const path=testInfo.outputPath('shader.html');await copyFile((await file.path())!,path);
  await page.goto(pathToFileURL(path).href);await expect(page.locator('#hud')).toContainText('Collectibles 0 / 2');await page.waitForTimeout(500);expect(errors).toEqual([]);
 });
+
+test('edit, persist, remove and bake a non-destructive modifier stack',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const panel=page.getByRole('group',{name:'Model Studio · Non-destructive modifiers'});
+ await panel.getByRole('button',{name:'Apply modifier stack'}).click();await expect(panel.getByTestId('modifier-summary')).toContainText('evaluated 26 vertices · 48 triangles');
+ await expect(page.getByRole('group',{name:'Model Studio · Mesh topology'})).toHaveCount(0);
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.locator('.entity').filter({hasText:/^mesh\s*$/i}).last().click();await expect(panel.getByTestId('modifier-summary')).toContainText('48 triangles');
+ await panel.getByRole('button',{name:'Remove modifier stack'}).click();await expect(page.getByTestId('mesh-topology-stats')).toContainText('8 vertices · 12 triangles');
+ await panel.getByRole('button',{name:'Box cut example'}).click();await panel.getByRole('button',{name:'Apply modifier stack'}).click();await expect(panel.getByTestId('modifier-summary')).toBeVisible();
+ await panel.getByRole('button',{name:'Bake modifier stack'}).click();await expect(page.getByTestId('mesh-topology-stats')).toBeVisible();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(panel.getByTestId('modifier-summary')).toBeVisible();
+});
