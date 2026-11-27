@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {Readable} from 'node:stream';
+import {createServer} from 'node:http';
 import {createRoomRegistry,createRoomMiddleware} from '../../server/room-proxy.mjs';
 const fingerprint='abc-12345678-abcdef12',base={fingerprint,name:'Tester',position:[0,1,0]};
 describe('local multiplayer presence registry',()=>{
@@ -23,4 +24,21 @@ describe('local multiplayer presence registry',()=>{
  const req=Readable.from([JSON.stringify({action:'create',...base})]);req.url='/api/rooms';req.method='POST';req.socket={remoteAddress:'127.0.0.1'};req.headers={host:'127.0.0.1:5173',origin:'https://untrusted.example','content-type':'application/json'};
  const result=await new Promise(resolve=>{let status;createRoomMiddleware(registry)(req,{writeHead(s){status=s;},end(body){resolve({status,body:JSON.parse(body)});}},()=>{});});expect(result.status).toBe(403);
  });
+});
+
+it('exchanges presence through a real ephemeral loopback HTTP server',async()=>{
+ const server=createServer((req,res)=>middleware(req,res,()=>{res.writeHead(404);res.end();}));
+ const middleware=createRoomMiddleware(createRoomRegistry());
+ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+ try{
+ const origin='http://127.0.0.1:'+server.address().port;
+ async function call(body,header=origin){const response=await fetch(origin+'/api/rooms',{method:'POST',headers:{Origin:header,'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:response.status,body:await response.json()};}
+ const a=(await call({action:'create',...base})).body;
+ const b=(await call({action:'join',...base,code:a.code,name:'Remote'})).body;
+ expect(a.token).not.toBe(b.token);expect(b.peers[0].name).toBe('Tester');
+ expect((await call({action:'update',code:b.code,id:b.id,token:b.token,sequence:0,position:[5,1,0]})).status).toBe(200);
+ const view=await call({action:'update',code:a.code,id:a.id,token:a.token,sequence:0,position:[0,1,0]});
+ expect(view.body.peers[0].position).toEqual([5,1,0]);expect(JSON.stringify(view.body)).not.toContain(b.token);
+ expect((await call({action:'create',...base},'https://example.invalid')).status).toBe(403);
+ }finally{await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});}
 });

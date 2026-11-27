@@ -1,10 +1,10 @@
-import type {Project} from '../core/project';
+import {parseProject,type Project} from '../core/project';
 import {orderedScenes} from '../core/scenes';
 export type CampaignSave={format:'game-studio-progress';version:1;fingerprint:string;levelId:string};
 /** Non-cryptographic identity check for local, user-controlled save files.
  * It prevents accidental cross-game loads, not tampering or competitive cheating. */
 export function projectFingerprint(project:Project):string{
- const raw=JSON.stringify(project);let a=2166136261,b=0x9e3779b9;
+ const raw=JSON.stringify(parseProject(JSON.stringify(project)));let a=2166136261,b=0x9e3779b9;
  for(let i=0;i<raw.length;i++){const c=raw.charCodeAt(i);a=Math.imul(a^c,16777619);b=Math.imul(b+c,0x85ebca6b)^(b>>>13);}
  return [raw.length.toString(16),(a>>>0).toString(16).padStart(8,'0'),(b>>>0).toString(16).padStart(8,'0')].join('-');
 }
