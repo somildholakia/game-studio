@@ -598,3 +598,17 @@ test('GPU shader changes the actual rendered canvas color',async({page})=>{
  await graph.getByRole('button',{name:'Restore PBR material'}).click();
  await expect.poll(magentaPixels,{timeout:15000}).toBeLessThan(before+50);
 });
+
+test('build shader and modifier graphs using visual controls without writing JSON',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const shader=page.getByRole('group',{name:'Shader Studio · GPU surface graph'});
+ await shader.getByRole('button',{name:'Add color node'}).click();
+ await shader.getByLabel('Node 3 color').fill('#00ff00');
+ await shader.getByRole('button',{name:'Add mix node'}).click();
+ await shader.getByLabel('Node 4 blend').fill('.25');
+ await shader.getByRole('button',{name:'Apply shader graph'}).click();
+ await expect(shader.getByText('GPU graph active · 5 nodes')).toBeVisible();
+ const mods=page.getByRole('group',{name:'Model Studio · Non-destructive modifiers'});
+ await mods.getByRole('button',{name:'Add mirror step'}).click();await mods.getByLabel('Mirror axis').selectOption('2');
+ await mods.getByRole('button',{name:'Apply modifier stack'}).click();await expect(mods.getByTestId('modifier-summary')).toContainText('2 active steps');
+});

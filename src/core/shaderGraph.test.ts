@@ -12,3 +12,5 @@ describe('bounded shader graph',()=>{
  expect(()=>parseProject(JSON.stringify({version:1,name:'x',entities:[{...entity('character'),shader:defaultShaderGraph}]}))).toThrow();
  });
 });
+
+it('rejects excessive shader graph references across scene and prefab snapshots',()=>{const entities=Array.from({length:65},()=>({...entity('box'),shader:defaultShaderGraph}));expect(()=>parseProject(JSON.stringify({version:1,name:'x',entities}))).toThrow(/reference limit/);});
