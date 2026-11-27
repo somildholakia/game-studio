@@ -10,7 +10,7 @@ Manual-first browser authoring with beginner and expert workflows. Benchmark Unr
 - Runtime: separate simulation, physics adapter, input, audio, visual-event interpreter and isolated scripts.
 - Studios: mesh editing, character rigging, animation, materials, terrain, UI, audio and cinematics.
 - AI: provider adapters, credential isolation, bounded schema-validated command plans, explicit review and undo. No arbitrary code in privileged editor. Do not persist keys in localStorage or project files.
-- Plugins: versioned manifest, capability permissions, sandboxed workers/iframes and message validation.
+- Plugins: initial declarative creator-tool manifests and typed parameters, explicit command capabilities and validated preview/apply. Executable plugins still require sandboxed workers/iframes and message validation.
 - Cloud: tenant-scoped metadata in PostgreSQL, object storage and signed upload URLs, CDN, quota controls, optional Yjs collaboration. GitHub App least-privilege access and large asset strategy.
 - Export: standalone web runtime first; native builds require separate toolchains.
 

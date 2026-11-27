@@ -456,3 +456,11 @@ test('import a bounded WAV effect and restore it after reload',async({page})=>{
  await audio.getByLabel('Import WAV effect').setInputFiles({name:'collect.wav',mimeType:'audio/wav',buffer:wav});await expect(audio.getByText('collect.wav',{exact:true})).toBeVisible();
  await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await expect(page.getByRole('group',{name:'Audio Studio · Event sounds',exact:true}).getByText('collect.wav',{exact:true})).toBeVisible();
 });
+
+test('run a parameterized creator tool as an undoable edit',async({page})=>{
+ await page.goto('/');const tool=page.getByRole('group',{name:'Creator tools · Declarative extensions',exact:true});
+ await tool.getByLabel('Platform name').fill('Tool platform');await tool.getByLabel('Height',{exact:true}).fill('4');
+ await tool.getByRole('button',{name:'Preview tool changes'}).click();await expect(tool.getByText('Add: Tool platform (box)',{exact:true})).toBeVisible();
+ await tool.getByRole('button',{name:'Apply creator tool'}).click();await expect(page.getByRole('button',{name:'Tool platform solid'})).toBeVisible();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Tool platform solid'})).toHaveCount(0);
+});

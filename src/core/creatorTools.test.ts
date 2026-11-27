@@ -1,0 +1,8 @@
+import {describe,it,expect} from 'vitest';
+import {platformTool,readCreatorTool,previewCreatorTool,toolDefaults,expandTool} from './creatorTools';
+import {initialProject} from './project';
+describe('declarative creator tools',()=>{
+ it('binds typed parameters into a reviewed, atomic edit',()=>{const p=initialProject(),before=JSON.stringify(p),values={...toolDefaults(platformTool),height:4,width:3,name:'New platform'};const result=previewCreatorTool(p,platformTool,values);expect(result.next.entities.at(-1)?.position).toEqual([0,4,0]);expect(result.next.entities.at(-1)?.scale).toEqual([3,.25,2]);expect(result.changes).toContain('Add: New platform (box)');expect(JSON.stringify(p)).toBe(before);});
+ it('rejects out-of-range parameters, undeclared commands and malicious placeholders',()=>{expect(()=>expandTool(platformTool,{...toolDefaults(platformTool),height:101})).toThrow('Invalid parameter');expect(()=>readCreatorTool(JSON.stringify({...platformTool,commands:[{op:'delete',id:'x'}]}))).toThrow('capability');expect(()=>readCreatorTool(JSON.stringify({...platformTool,commands:[{op:'add',kind:'box',patch:{name:{$param:'missing'}}}]}))).toThrow('Unknown parameter');expect(()=>readCreatorTool(JSON.stringify({...platformTool,commands:[{op:{$param:'name'},kind:'box',patch:{}}]}))).toThrow('capability');});
+ it('rejects invalid manifest shapes and unknown capabilities',()=>{expect(()=>readCreatorTool(JSON.stringify({...platformTool,version:2}))).toThrow();expect(()=>readCreatorTool(JSON.stringify({...platformTool,capabilities:['network']}))).toThrow();expect(()=>readCreatorTool(JSON.stringify({...platformTool,parameters:[...platformTool.parameters,platformTool.parameters[0]]}))).toThrow('Duplicate');});
+});
