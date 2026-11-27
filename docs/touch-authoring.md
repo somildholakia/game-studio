@@ -1,0 +1,5 @@
+# Touch-authoring verification candidate
+
+Compact portrait and short landscape viewports keep the 3D canvas full width above independently scrollable workspace and inspector panels. Touch-capable profiles increase authoring targets and form controls, and numeric/text inputs retain readable sizes. The Playwright touch-authoring test uses contexts with real emulated touch pointers (hasTouch; isMobile on Chromium/WebKit, Firefox touch-capable compact context). It exercises touch taps to load a playable scene, add/select a new primitive, edit its name and X position, undo/redo, persist, change orientation, reload and play. It also checks touch events, full-width landscape viewport, no horizontal overflow and 44-pixel game controls.
+
+Passing this test across all three browser engines establishes a bounded mobile-profile authoring workflow in software-rendered CI. It is not physical iOS/Android hardware, native soft-keyboard behavior, screen-reader certification, sustained GPU performance or production accessibility. Keep the physical device and real-device/accessibility gates open. No points are assigned before combined CI evidence is available.
