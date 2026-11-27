@@ -86,3 +86,5 @@ Export a common base project and share it with a teammate; each author edits ind
 
 ## Security review
 The project parser has a central 10-million-character input bound and GLB JSON requires valid UTF-8. The deterministic fuzz suite mutates project and GLB fixtures and exercises unsafe plan/tool inputs. CI inventories lockfile license, integrity and registry metadata, runs npm advisory audit and retains both reports. See [security review](security-review.md) for scope and residual threats. An audit failure must be addressed, not ignored.
+
+The previous Firefox matrix reported one first-test Play/HUD failure after reload (the remaining 43 tests passed). Play and campaign controls now wait for renderer initialization and are disabled during graphics recovery. The failure cause was not established from the available log; the next browser matrix must pass before crediting the previous modifier checkpoint or these changes.

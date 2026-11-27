@@ -49,6 +49,7 @@ export function mergeProjects(base:Project,local:Project,incoming:Project,choice
   }
   // Coupled structures cannot be merged independently (e.g. modifier source and evaluated cache).
   if(['mesh','meshModifiers','rig','shader','animation','material','body','terrain'].includes(key))return conflict(a,b,path);
+  if(record(o)&&record(a)&&record(b)&&typeof o.id==='string'&&typeof o.kind==='string'&&((!equal(o.mesh,a.mesh)||!equal(o.meshModifiers,a.meshModifiers))&&(!equal(o.mesh,b.mesh)||!equal(o.meshModifiers,b.meshModifiers))))return conflict(a,b,path);
   if(record(o)&&record(a)&&record(b)){
    return Object.fromEntries([...new Set([...Object.keys(o),...Object.keys(a),...Object.keys(b)])].map(k=>[k,merge(o[k],a[k],b[k],path+'/'+escape(k),depth+1)]).filter(([,v])=>v!==undefined));
   }
