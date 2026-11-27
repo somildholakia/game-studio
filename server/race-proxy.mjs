@@ -3,7 +3,7 @@ import {localJsonError} from './local-policy.mjs';
 const TTL=30000,MAX_ROOMS=4,MAX_BODY=300000,TICK_MS=1000/60;
 const codePattern=/^[a-f0-9]{8}$/;
 const name=p=>typeof p==='string'&&p.trim().length>0&&p.length<=32&&!/[\u0000-\u001f\u007f]/.test(p);
-const fields={create:['action','name','project'],join:['action','code','name'],input:['action','code','id','token','sequence','input'],snapshot:['action','code','id','token'],leave:['action','code','id','token']};
+const fields={create:['action','name','project','mode'],join:['action','code','name'],input:['action','code','id','token','sequence','input'],start:['action','code','id','token'],snapshot:['action','code','id','token'],leave:['action','code','id','token']};
 export function createRaceRegistry(createMatch,now=()=>performance.now()){
  const rooms=new Map();
  const fail=(status,error)=>({status,body:{error}}),ok=body=>({status:200,body});
@@ -27,7 +27,7 @@ export function createRaceRegistry(createMatch,now=()=>performance.now()){
   if(p.action==='create'){
    if(!name(p.name)||typeof p.project!=='string')return fail(400,'Race name and project required');
    if(rooms.size>=MAX_ROOMS)return fail(429,'Local race room limit reached');
-   let match;try{match=createMatch(p.project);}catch{return fail(400,'Invalid or oversized race project');}
+   let match;try{match=createMatch(p.project,p.mode);}catch{return fail(400,'Invalid or oversized race project');}
    let code;do{code=randomBytes(4).toString('hex');}while(rooms.has(code));
    const room={match,members:new Map(),last:time};const result=join(room,code,p,time);if(result.status===200)rooms.set(code,room);return result;
   }
@@ -36,6 +36,7 @@ export function createRaceRegistry(createMatch,now=()=>performance.now()){
   if(p.action==='join'){if(!room)return fail(404,'Race room expired or not found');if(!name(p.name))return fail(400,'Invalid racer name');return join(room,p.code,p,time);}
   const m=room?.members.get(p.id);if(!m||typeof p.token!=='string'||m.token!==p.token)return fail(403,'Race membership expired or invalid');
   if(p.action==='leave'){room.members.delete(p.id);room.match.remove(p.id);if(!room.members.size)rooms.delete(p.code);return ok({left:true});}
+  if(p.action==='start'&&!room.match.start(p.id))return fail(409,'Only the host can start a shared race with at least two racers');
   if(p.action==='input'&&!room.match.input(p.id,p.sequence,p.input))return fail(400,'Invalid or stale race input');
   m.seen=time;return ok({snapshot:room.match.snapshot()});
  }};
