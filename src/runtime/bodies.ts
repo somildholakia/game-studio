@@ -20,8 +20,43 @@ export function compileBodies(p:Project):BodySpec[]{
 export function initialBodies(specs:readonly BodySpec[]):BodyStates{return new Map(specs.map(b=>[b.id,{position:[...b.bounds.center],velocity:[...b.settings.velocity]}]));}
 export function bodyBounds(spec:BodySpec,state:BodyState):Bounds{return {center:state.position,half:spec.bounds.half};}
 type Surface={height(x:number,z:number):number|null};
+/** Resolve initially overlapping dynamic AABBs using inverse-mass position corrections.
+ * Correct only where both proposed positions are clear of static geometry and floor surfaces. */
+function separateBodies(specs:readonly BodySpec[],states:Map<string,BodyState>,solids:BoundsSource,floors:readonly Bounds[],terrains:readonly Surface[],player:Bounds){
+ function clear(position:Vec3,half:Vec3){
+  if(overlaps(position,half,player))return false;
+  const obstacles='query' in solids?solids.query(position,half,0,0):solids;
+  if(obstacles.some(b=>overlaps(position,half,b)))return false;
+  if(floors.some(f=>overlaps(position,half,f,[0,2])&&position[1]-half[1]<f.center[1]+f.half[1]-1e-6))return false;
+  for(const t of terrains){const h=t.height(position[0],position[2]);if(h!==null&&position[1]-half[1]<h-1e-6)return false;}
+  return true;
+ }
+ for(let pass=0;pass<4;pass++){
+  let changed=false;
+  for(let i=0;i<specs.length;i++)for(let j=i+1;j<specs.length;j++){
+   const sa=specs[i],sb=specs[j],a=states.get(sa.id)!,b=states.get(sb.id)!;
+   if(!overlaps(a.position,sa.bounds.half,bodyBounds(sb,b)))continue;
+   const depths=sa.bounds.half.map((h,k)=>h+sb.bounds.half[k]-Math.abs(a.position[k]-b.position[k]));
+   const axes=([0,1,2] as const).slice().sort((x,y)=>depths[x]-depths[y]);
+   const ia=1/sa.settings.mass,ib=1/sb.settings.mass,sum=ia+ib;
+   for(const axis of axes){
+    const direction=a.position[axis]<=b.position[axis]?1:-1,depth=depths[axis]+1e-6;
+    const pa=[...a.position] as Vec3,pb=[...b.position] as Vec3;
+    pa[axis]-=direction*depth*ia/sum;pb[axis]+=direction*depth*ib/sum;
+    if(clear(pa,sa.bounds.half)&&clear(pb,sb.bounds.half)){a.position=pa;b.position=pb;changed=true;break;}
+    // If one side is pinned against a static surface, try moving only the free body.
+    pa[axis]=a.position[axis]-direction*depth;pb[axis]=b.position[axis]+direction*depth;
+    if(clear(pa,sa.bounds.half)){a.position=pa;changed=true;break;}
+    if(clear(pb,sb.bounds.half)){b.position=pb;changed=true;break;}
+   }
+  }
+  if(!changed)break;
+ }
+}
+
 export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,solids:BoundsSource,floors:readonly Bounds[],terrains:readonly Surface[],gravity:number,fallLimit:number,dt:number,player:Bounds,push:Vec3):BodyStates{
  const next=new Map<string,BodyState>();for(const spec of specs){const b=previous.get(spec.id)!;next.set(spec.id,{position:[...b.position],velocity:[...b.velocity]});}
+ separateBodies(specs,next,solids,floors,terrains,player);
  for(const spec of specs){
  const b=next.get(spec.id)!,half=spec.bounds.half,settings=spec.settings;
  const other=specs.filter(s=>s.id!==spec.id);
@@ -50,7 +85,14 @@ export function advanceBodies(specs:readonly BodySpec[],previous:BodyStates,soli
  if(contact){
   // Equal and opposite normal impulses conserve linear momentum. Only approaching pairs collide.
   const peer=next.get(contact.id)!,direction=Math.sign(delta),closing=(b.velocity[axis]-peer.velocity[axis])*direction;
-  if(closing>0){const impulse=(1+Math.min(settings.restitution,contact.settings.restitution))*closing/(1/settings.mass+1/contact.settings.mass);b.velocity[axis]-=direction*impulse/settings.mass;peer.velocity[axis]+=direction*impulse/contact.settings.mass;}
+  if(closing>0){
+   const invA=1/settings.mass,invB=1/contact.settings.mass,denom=invA+invB,restitution=closing<.15?0:Math.min(settings.restitution,contact.settings.restitution);
+   const impulse=(1+restitution)*closing/denom;b.velocity[axis]-=direction*impulse*invA;peer.velocity[axis]+=direction*impulse*invB;
+   // Coulomb-bounded tangential impulse. Existing ground damping remains separate.
+   const tangents=([0,1,2] as const).filter(k=>k!==axis),relative=tangents.map(k=>b.velocity[k]-peer.velocity[k]),speed=Math.hypot(...relative);
+   const friction=Math.min(settings.friction,contact.settings.friction)/20,limit=Math.min(speed/denom,friction*impulse);
+   if(speed>1e-9&&limit>0)for(let i=0;i<tangents.length;i++){const k=tangents[i],j=limit*relative[i]/speed;b.velocity[k]-=j*invA;peer.velocity[k]+=j*invB;}
+  }
  }else{b.velocity[axis]=-b.velocity[axis]*settings.restitution;if(Math.abs(b.velocity[axis])<.15)b.velocity[axis]=0;}
  }
  }
