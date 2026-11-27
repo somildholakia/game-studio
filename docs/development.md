@@ -48,3 +48,5 @@ Select an object and use Material library to apply four built-in solid/procedura
 
 ## Keyboard navigation and playable identity
 Use Tab to reach the three Editor keyboard navigation buttons at the top of the page. They move focus to Workspace, the viewport or Inspector; Tab continues into the respective controls. Scene object buttons expose their selected state, and Import project opens the file picker from Enter or Space. The browser test exercises navigation and object creation; a full screen-reader, keyboard and accessibility audit remains open. Unused material library presets are omitted from playable HTML and excluded from campaign/room fingerprints; applying a material to an object still changes game identity.
+
+The recovery regression additionally requires context-loss support in CI Chromium, checks export of the exact authored transform while graphics are suspended, then restores the renderer and verifies the object after stop and reload. Other browser configurations may skip the simulated-loss case if WEBGL_lose_context is unavailable. This is controlled software-renderer coverage, not a hardware recovery guarantee.

@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {pathToFileURL} from 'node:url';
-import {copyFile} from 'node:fs/promises';
+import {copyFile,readFile} from 'node:fs/promises';
 test('author, save, play and export a browser game',async({page},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');
@@ -465,16 +465,24 @@ test('run a parameterized creator tool as an undoable edit',async({page})=>{
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Tool platform solid'})).toHaveCount(0);
 });
 
-test('suspend simulation during WebGL context loss and resume after recovery',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByLabel('Show level timer').check();await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+test('suspend simulation during WebGL context loss and resume after recovery',async({page,browserName})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByRole('button',{name:'+ box',exact:true}).click();
+ await page.getByRole('group',{name:'box',exact:true}).getByLabel('Name',{exact:true}).fill('Recovery marker');await page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true}).fill('12');
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.getByLabel('Show level timer').check();await page.getByRole('button',{name:'▶ Play',exact:true}).click();
  await expect(page.getByRole('timer')).toHaveText(/Time: 0:0[0-9]/);
  const supported=await page.locator('canvas').evaluate(canvas=>{const c=canvas as HTMLCanvasElement;const gl=c.getContext('webgl2')??c.getContext('webgl');const ext=gl?.getExtension('WEBGL_lose_context');if(!ext)return false;Reflect.set(c,'testContextLoss',ext);return true;});
+ if(browserName==='chromium')expect(supported,'Chromium software graphics must support the recovery test').toBe(true);
  test.skip(!supported,'WEBGL_lose_context is unavailable in this browser configuration');
  await page.locator('canvas').evaluate(c=>(Reflect.get(c,'testContextLoss') as WEBGL_lose_context).loseContext());
  await expect(page.getByTestId('graphics-recovery')).toBeVisible({timeout:15000});
  const frozen=await page.getByRole('timer').textContent();await page.waitForTimeout(1300);await expect(page.getByRole('timer')).toHaveText(frozen!);
+ const backup=page.waitForEvent('download');await page.getByRole('button',{name:'Export project',exact:true}).click();const file=await backup;const saved=JSON.parse(await readFile((await file.path())!,'utf8'));
+ expect(saved.entities.find((item:{name:string})=>item.name==='Recovery marker')?.position[0]).toBe(12);
  await page.locator('canvas').evaluate(c=>(Reflect.get(c,'testContextLoss') as WEBGL_lose_context).restoreContext());
  await expect(page.getByTestId('graphics-recovery')).toHaveCount(0,{timeout:30000});await expect(page.getByRole('timer')).not.toHaveText(frozen!,{timeout:15000});
+ await page.getByRole('button',{name:'■ Stop',exact:true}).click();await expect(page.getByRole('button',{name:'Recovery marker',exact:true})).toBeVisible();
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.getByRole('button',{name:'Recovery marker',exact:true}).click();
+ await expect(page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true})).toHaveValue('12');
 });
 
 test('local multiplayer room UI exchanges presence through its validated transport',async({page})=>{
@@ -519,6 +527,12 @@ test('keyboard navigation reaches authoring controls and exposes selection',asyn
  await expect(page.getByRole('button',{name:'+ box',exact:true})).toBeFocused();await page.keyboard.press('Enter');
  await expect(page.locator('.entity[aria-pressed=true]')).toHaveCount(1);
  await expect(page.getByRole('group',{name:'box',exact:true}).getByLabel('Name',{exact:true})).toHaveValue('box');
+ const name=page.getByRole('group',{name:'box',exact:true}).getByLabel('Name',{exact:true});await name.focus();await page.keyboard.press('End');await page.keyboard.type(' keyboard');await expect(name).toHaveValue('box keyboard');
+ const x=page.getByRole('group',{name:'position',exact:true}).getByLabel('X',{exact:true});await x.focus();await page.keyboard.press('ArrowUp');await expect(x).not.toHaveValue('0');
+ const changed=await x.inputValue();await page.getByRole('button',{name:'Undo',exact:true}).focus();await page.keyboard.press('Enter');await expect(x).toHaveValue('0');
+ await page.getByRole('button',{name:'Redo',exact:true}).focus();await page.keyboard.press('Enter');await expect(x).toHaveValue(changed);
+ const backup=page.waitForEvent('download');await page.getByRole('button',{name:'Export project',exact:true}).focus();await page.keyboard.press('Enter');const file=await backup;
+ const saved=JSON.parse(await readFile((await file.path())!,'utf8'));expect(saved.entities.find((item:{name:string})=>item.name==='box keyboard')?.position[0]).toBe(Number(changed));
  await page.getByRole('button',{name:'Focus inspector'}).focus();await page.keyboard.press('Enter');
  await expect(page.getByRole('heading',{name:'Inspector',exact:true})).toBeFocused();
  await page.getByRole('button',{name:'Focus viewport'}).focus();await page.keyboard.press('Enter');await expect(page.locator('canvas')).toBeFocused();
