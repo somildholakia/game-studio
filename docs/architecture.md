@@ -34,3 +34,9 @@ The local gateway telemetry stores fixed-route counters and a bounded latency wi
 - Runtime: dynamic-body swept contact transfers mass-weighted normal impulse; full angular/contact solver remains open.
 - Multiplayer: separate bounded /api/race development transport drives the same validated simulation under a server-owned fixed tick; common snapshots and replay-resistant movement input, independent per-racer lane state. Existing presence transport remains distinct. Shared authoritative world, prediction/reconciliation, public identity and matchmaking are still open.
 - Cloud: [private backup service](backup-service.md) is a single-process filesystem adapter and scoped bearer-token reference API, not deployed object storage or production end-user authentication. The PostgreSQL/object storage, identity, encryption and off-site restore targets remain unchanged.
+
+
+## Shared gameplay and cloud continuation
+- Shared race mode: server-owned movement/collectibles/result, host-controlled lobby, temporary canonical level on join, actual 3D client input and state presentation; intentionally static courses and noncolliding players only. General shared rigid bodies, arbitrary rule state, interpolation/prediction, matchmaking and public transport remain open.
+- Cloud adapter: content-addressed immutable bytes and per-tenant generation-CAS index on Google Cloud Storage JSON API, verified separate-store copy and restore, private service wiring with pinned refreshing RS256 signing keys. Cloud configuration, provisioned buckets, workload identity, public service integration, user login and disaster-recovery acceptance remain open.
+- Responsive editor: compact full-width viewport and scrollable authoring panes, emulated-browser regression; physical-device and assistive-technology evidence remains open.
