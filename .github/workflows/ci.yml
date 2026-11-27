@@ -21,7 +21,8 @@ jobs:
       - run: node scripts/dependency-review.mjs
       - run: npm test
       - name: Audit locked dependencies
-        run: npm audit --audit-level=high --json > reports/npm-audit.json
+        shell: bash
+        run: npm audit --audit-level=high --json | tee reports/npm-audit.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
