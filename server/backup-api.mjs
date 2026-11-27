@@ -28,12 +28,12 @@ export function createBackupServer({store,authenticate,maxBytes=10_000_000,maxCo
    const p=authenticate(req.headers.authorization);if(!p)fail(401,'Authentication required');
    const match=/^\/v1\/projects\/([a-zA-Z0-9][a-zA-Z0-9_-]{0,63})\/revisions(?:\/([1-9][0-9]{0,3})(\/restore)?)?$/.exec(req.url||'');
    if(!match)fail(404,'Backup endpoint not found');const [,project,number,restore]=match,revision=number?Number(number):null;
-   if(req.method==='GET'&&!restore){if(revision===null){send(res,200,{revisions:store.list(p.tenant,project)});return;}const record=store.read(p.tenant,project,revision);res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="project.json"','Content-Length':record.bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','ETag':'"'+record.sha+'"'});res.end(record.bytes);return;}
+   if(req.method==='GET'&&!restore){if(revision===null){send(res,200,{revisions:await store.list(p.tenant,project)});return;}const record=await store.read(p.tenant,project,revision);res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="project.json"','Content-Length':record.bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','ETag':'"'+record.sha+'"'});res.end(record.bytes);return;}
    if((req.method==='PUT'&&revision===null)||(req.method==='POST'&&restore)){
     if(!p.write)fail(403,'Write permission required');const head=expected(req);
-    if(restore){if(req.headers['transfer-encoding']||Number(req.headers['content-length']||0)!==0)fail(400,'Restore must not include a body');send(res,201,store.restore(p.tenant,project,revision,head));return;}
+    if(restore){if(req.headers['transfer-encoding']||Number(req.headers['content-length']||0)!==0)fail(400,'Restore must not include a body');send(res,201,await store.restore(p.tenant,project,revision,head));return;}
     if(req.headers['content-type']?.split(';')[0].trim().toLowerCase()!=='application/json')fail(415,'JSON required');
-    const bytes=await readBody(req,maxBytes);send(res,201,store.append(p.tenant,project,head,bytes));return;
+    const bytes=await readBody(req,maxBytes);send(res,201,await store.append(p.tenant,project,head,bytes));return;
    }fail(405,'Method not allowed');
   })().catch(e=>{if(!res.headersSent&&!res.destroyed)send(res,e instanceof BackupError?e.status:500,{error:e instanceof BackupError?e.message:'Backup operation failed'},{Connection:'close'});else if(!res.destroyed)res.end();}).finally(()=>{active--;});
  });
