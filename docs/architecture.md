@@ -28,3 +28,9 @@ Reproducible lockfile, CI typecheck/test/build, browser E2E coverage, import fuz
 
 ## Operational boundary
 The local gateway telemetry stores fixed-route counters and a bounded latency window, without request data. See [operations](operations.md) for future production monitoring, incident handling, load tests and durability targets. These are not deployed production services.
+
+
+## Subsequent reference service modules
+- Runtime: dynamic-body swept contact transfers mass-weighted normal impulse; full angular/contact solver remains open.
+- Multiplayer: separate bounded /api/race development transport drives the same validated simulation under a server-owned fixed tick; common snapshots and replay-resistant movement input, independent per-racer lane state. Existing presence transport remains distinct. Shared authoritative world, prediction/reconciliation, public identity and matchmaking are still open.
+- Cloud: [private backup service](backup-service.md) is a single-process filesystem adapter and scoped bearer-token reference API, not deployed object storage or production end-user authentication. The PostgreSQL/object storage, identity, encryption and off-site restore targets remain unchanged.
