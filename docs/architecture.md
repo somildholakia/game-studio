@@ -6,14 +6,14 @@ Manual-first browser authoring with beginner and expert workflows. Benchmark Unr
 ## Modules
 - Core: versioned scene schema, command history, migrations and stable IDs.
 - Engine: Babylon renderer adapter; initial WebGL, feature-detected WebGPU later.
-- Asset pipeline: content-addressed GLB/textures, workers, dependency graph, reusable prefabs, OPFS and IndexedDB.
+- Asset pipeline: bounded embedded GLBs and local texture/audio validation, reusable prefabs, IndexedDB, hosted content-addressed compressed GLB chunks and on-demand level/dependency loading; OPFS, production-scale CDN and general asset graph remain planned.
 - Runtime: separate simulation, physics adapter, input, audio, visual-event interpreter and isolated scripts.
 - Studios: mesh editing, character rigging, animation, materials, terrain, UI, audio and cinematics.
-- AI: provider adapters, credential isolation, bounded schema-validated command plans, explicit review and undo. No arbitrary code in privileged editor. Do not persist keys in localStorage or project files.
-- Plugins: initial declarative creator-tool manifests and typed parameters, explicit command capabilities and validated preview/apply. Executable plugins still require sandboxed workers/iframes and message validation.
+- AI: provider adapters, credential isolation, bounded schema-validated command plans, explicit review and undo. No arbitrary code in privileged editor. Offline deterministic recipe generation uses the same reviewed plan interface; live provider quality still requires opt-in evaluation. Do not persist keys in localStorage or project files.
+- Plugins: initial declarative creator-tool manifests and typed parameters, explicit command capabilities and validated preview/apply. A bounded capability-only numeric Wasm worker is implemented; unrestricted executable plugins and production marketplace security remain open.
 - Multiplayer: local-development presence room prototype with bounded membership, per-member tokens and level identity; authoritative synchronized gameplay, matchmaking and public transport remain future work.
 - Cloud: tenant-scoped metadata in PostgreSQL, object storage and signed upload URLs, CDN, quota controls, optional Yjs collaboration. GitHub App least-privilege access and large asset strategy.
-- Export: standalone web runtime first; native builds require separate toolchains.
+- Export: standalone offline web runtime and extracted static hosted website ZIP with lazy compressed level/model chunks; automated public hosting, native builds and cloud service integration remain separate.
 
 ## Milestones
 1. Editor foundation: scene manipulation, picking, project import/export, undo, tests.

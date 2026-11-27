@@ -36,7 +36,7 @@ A dependency lockfile was generated in successful Validate run 45829995781; CI n
 
 Context-loss handling now suspends the simulation during Babylon resource restoration and defers editor updates. A browser regression uses WEBGL_lose_context when supported; real-device recovery and failure-path validation remain open.
 
-No live third-party credentials are used in tests. Recheck the current PR head's Actions before treating these checkpoint results as current.
+Normal CI uses mocked third-party provider calls. The separate, explicitly scoped live Git project acceptance uses a short-lived GitHub Actions repository token and synthetic temporary branch; no live AI keys are used in default CI. Recheck the current PR head's Actions before treating these checkpoint results as current.
 
 Verified baseline: `4a5eecdd9c34c9d7bee6eed703b340e51ddebf0f` passed [Validate 45997452632](https://github.com/somildholakia/game-studio/actions/runs/45997452632) and [Browser compatibility 45997452539](https://github.com/somildholakia/game-studio/actions/runs/45997452539). The new static release manifest and CI artifact are subject to verification at the updated revision. See [static deployment](static-deployment.md) for scope, artifact integrity, staged rollout and rollback. No public deployment or rollback drill has been performed.
 
@@ -49,3 +49,6 @@ Controlled 60-point baseline 6e77de02be5d98e53655e0cb00d0a5a08faa459b: [Validate
 New candidate checkpoints: weighted procedural skeletal skinning, scalar animation retargeting/blending, asynchronous conflict-reviewed project merging, seeded import fuzz/security inventory, restricted Wasm worker SDK. Full current matrix and audit must pass; independent security, device, service and production gates remain open.
 
 Verified controlled 72-point checkpoint 53290c2250f9eb3bbbfdf22b64aa026a8313ed5a: [Validate 46003016867](https://github.com/somildholakia/game-studio/actions/runs/46003016867) and [Browser compatibility 46003017004](https://github.com/somildholakia/game-studio/actions/runs/46003017004) both passed (226 unit, nine Node, 49 E2E per browser, zero npm advisory findings). See acceptance ledger for the stricter 70-point score and scoped evidence. Compressed local packages and decode scheduling follow this tested revision and require their own CI. No production release authorization, physical-device certification, or public service readiness is implied.
+
+
+The hosted website ZIP and compressed content-addressed delivery have controlled static-host tests, not a public deployment/rollback drill. The live Git gateway smoke verifies real repository history and optimistic concurrency, not production tenant isolation. See the acceptance ledger for controlled planning scope. A physical GPU/device test and real live AI evaluation remain mandatory where required.

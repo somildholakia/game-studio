@@ -13,3 +13,7 @@ Run npm test and npm run build, then npm run test:e2e. CI logs contain JSON repo
 
 ## Physical-device acceptance still required
 On an explicitly recorded desktop and low/mid-tier mobile device, record OS/browser/GPU/driver, screen resolution, render scale, memory, thermal state and sustained frame/simulation times for a reproducible five-minute playtest. Proposed targets are desktop p95 <= 33 ms and mobile p95 <= 50 ms, simulation p95 <= 8 ms, no crashes, no unbounded memory growth, and usable touch authoring. Measure before raising supported scene budgets. Do not claim these targets are met from software-browser CI. Profile CPU/GPU separately and repeat after upgrades.
+
+
+## Active gameplay profiles
+The editor now maintains a bounded recent-frame sample window (180), measured from the engine frame interval, simulation CPU step and CPU render submission independently. Samples exclude pause, completed games, hidden documents and context recovery. New sessions reset the window. The active-game reference regression runs 126 entities (player, ground, 96 static obstacles, 12 dynamic bodies and 16 collectible triggers) at desktop 1280×800 full scale and compact 430×800 half scale, requiring at least 24 samples and p95 frame <500 ms, simulation <50 ms, render-submit <500 ms. These generous software-renderer budgets detect regressions, not real physical-device or production FPS guarantees. The separate 1,024-static-body CPU test remains required.
