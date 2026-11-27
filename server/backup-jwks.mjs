@@ -7,7 +7,7 @@ function safeHeader(header){
  }catch{return null;}
 }
 async function loadJson(response){
- if(!response.ok||!response.body)throw Error('Identity keys unavailable');
+ if(!response.ok||!response.body){try{await response.body?.cancel();}catch{}throw Error('Identity keys unavailable');}
  const reader=response.body.getReader(),chunks=[];let size=0;
  try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>65536){await reader.cancel();throw Error('Identity key response exceeds limit');}chunks.push(Buffer.from(value));}}
  finally{reader.releaseLock();}
@@ -22,11 +22,11 @@ export function createRefreshingJwtAuthenticator({jwksUrl,fetcher=fetch,cacheMs=
  async function refresh(){
   if(pending)return pending;
   const time=clock();if(time-lastAttempt<minRefreshMs)return false;lastAttempt=time;
-  pending=(async()=>{try{
+  pending=Promise.resolve().then(async()=>{try{
    const response=await fetcher(url.href,{redirect:'error',signal:AbortSignal.timeout(5000),headers:{Accept:'application/json'}});
    const jwks=await loadJson(response),auth=createJwtBackupAuthenticator({...policy,jwks});
    cached={auth,ids:new Set(jwks.keys.map(k=>k.kid)),expires:clock()+cacheMs};return true;
-  }catch{return false;}finally{pending=null;}})();
+  }catch{return false;}}).finally(()=>{pending=null;});
   return pending;
  }
  const authenticate=async header=>{
