@@ -1,4 +1,4 @@
-import {readMesh,type MeshData} from './mesh';
+import {readMesh,MAX_VERTICES,MAX_TRIANGLES,type MeshData} from './mesh';
 import type {Vec3} from './project';
 type Face=[number,number,number];
 const sub=(a:Vec3,b:Vec3):Vec3=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
@@ -46,6 +46,61 @@ export function cleanMesh(raw:MeshData):MeshData{
 export function reverseMesh(raw:MeshData):MeshData{
  const mesh=readMesh(raw);
  return readMesh({...mesh,triangles:mesh.triangles.map(([a,b,c])=>[a,c,b])});
+}
+/** One Loop subdivision step on an oriented triangular manifold, with boundary smoothing. */
+export function smoothSubdivision(raw:MeshData):MeshData{
+ const m=readMesh(raw),n=m.vertices.length;
+ if(m.triangles.length*4>MAX_TRIANGLES)throw Error('Subdivision exceeds triangle limit');
+ type Edge={a:number;b:number;opposite:number[];direction:number;index:number};
+ const edges=new Map<string,Edge>(),links=Array.from({length:n},()=>new Map<number,Set<number>>());
+ const key=(a:number,b:number)=>a<b?a+':'+b:b+':'+a;
+ const seen=new Set<string>();
+ const invalid=()=>{throw Error('Smooth subdivision requires a clean, consistently oriented manifold mesh.');};
+ const link=(v:number,a:number,b:number)=>{
+  const graph=links[v];
+  if(!graph.has(a))graph.set(a,new Set());
+  if(!graph.has(b))graph.set(b,new Set());
+  graph.get(a)!.add(b);graph.get(b)!.add(a);
+ };
+ for(const [a,b,c] of m.triangles){
+  const signature=[a,b,c].sort((x,y)=>x-y).join(',');
+  if(seen.has(signature)||Math.hypot(...cross(sub(m.vertices[b],m.vertices[a]),sub(m.vertices[c],m.vertices[a])))<1e-9)invalid();
+  seen.add(signature);
+  for(const [u,v,w] of [[a,b,c],[b,c,a],[c,a,b]]){
+   const k=key(u,v),direction=u<v?1:-1,existing=edges.get(k);
+   if(existing){
+    if(existing.opposite.length!==1||existing.direction===direction)invalid();
+    existing.opposite.push(w);
+   }else edges.set(k,{a:u,b:v,opposite:[w],direction,index:n+edges.size});
+   link(u,v,w);
+  }
+ }
+ if(n+edges.size>MAX_VERTICES)throw Error('Subdivision exceeds vertex limit');
+ const vertices:Vec3[]=m.vertices.map((p,i)=>{
+  const graph=links[i],neighbors=[...graph.keys()];
+  if(!neighbors.length)throw Error('Clean unused vertices before smooth subdivision');
+  const boundary=neighbors.filter(j=>edges.get(key(i,j))!.opposite.length===1);
+  if(boundary.length!==0&&boundary.length!==2)invalid();
+  // The link of each vertex must be a single cycle or path; reject bow-tie vertices.
+  for(const j of neighbors)if(graph.get(j)!.size!==(boundary.includes(j)?1:2))invalid();
+  const visited=new Set<number>(),stack=[neighbors[0]];
+  while(stack.length){const j=stack.pop()!;if(visited.has(j))continue;visited.add(j);for(const k of graph.get(j)!)stack.push(k);}
+  if(visited.size!==neighbors.length)invalid();
+  if(boundary.length===2)return p.map((x,k)=>.75*x+.125*(m.vertices[boundary[0]][k]+m.vertices[boundary[1]][k])) as Vec3;
+  const valence=neighbors.length;if(valence<3)invalid();
+  const beta=(5/8-(3/8+Math.cos(2*Math.PI/valence)/4)**2)/valence;
+  return p.map((x,k)=>(1-valence*beta)*x+beta*neighbors.reduce((sum,j)=>sum+m.vertices[j][k],0)) as Vec3;
+ });
+ for(const e of edges.values()){
+  const a=m.vertices[e.a],b=m.vertices[e.b];
+  vertices.push(a.map((x,k)=>e.opposite.length===1?(x+b[k])/2:3/8*(x+b[k])+1/8*(m.vertices[e.opposite[0]][k]+m.vertices[e.opposite[1]][k])) as Vec3);
+ }
+ const triangles:Face[]=[];
+ for(const [a,b,c] of m.triangles){
+  const ab=edges.get(key(a,b))!.index,bc=edges.get(key(b,c))!.index,ca=edges.get(key(c,a))!.index;
+  triangles.push([a,ab,ca],[ab,b,bc],[ca,bc,c],[ab,bc,ca]);
+ }
+ return readMesh({vertices,triangles});
 }
 export function meshToObj(m:MeshData):string{
  const mesh=readMesh(m);return ['# Game Studio mesh (right-handed OBJ)','o GameStudioMesh',...mesh.vertices.map(v=>'v '+[v[0],v[1],-v[2]].join(' ')),...mesh.triangles.map(t=>'f '+[t[0]+1,t[1]+1,t[2]+1].join(' '))].join('\n')+'\n';

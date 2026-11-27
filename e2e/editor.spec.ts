@@ -373,3 +373,12 @@ test('author a timed loss with limited lives and restart the exported game',asyn
  await expect(page.locator('#next-level')).toBeHidden();await page.getByRole('button',{name:'Restart',exact:true}).click();
  await expect(page.locator('#hud')).toContainText('Collectibles 0 / 2');
 });
+
+test('smoothly subdivide mesh topology and undo the operation',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ mesh',exact:true}).click();
+ const stats=page.getByTestId('mesh-topology-stats');
+ await page.getByRole('button',{name:'Smooth subdivision',exact:true}).click();
+ await expect(stats).toContainText('26 vertices · 48 triangles');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(stats).toContainText('8 vertices · 12 triangles');
+ await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(stats).toContainText('26 vertices · 48 triangles');
+});
