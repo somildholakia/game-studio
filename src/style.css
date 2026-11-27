@@ -8,3 +8,20 @@ textarea{display:block;width:100%;min-width:0;resize:vertical;background:#101620
 .studio-tabs{position:sticky;top:0;z-index:4;display:flex;gap:4px;flex-wrap:wrap;background:#171d28;padding:5px 0 8px;border-bottom:1px solid #34445a}.studio-tabs button{font-size:11px;padding:6px}.studio-tabs button[aria-pressed=true]{background:#395988;border-color:#8cafff}.workspace [hidden]{display:none!important}aside>div{min-width:0}button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #9bc3ff}
 .render-metrics{display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px;color:#aebbd0}.render-metrics dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
 .editor-jumps{display:flex;flex-wrap:wrap;gap:5px;padding:4px 12px;background:#1c2330}.editor-jumps button{font-size:12px;padding:4px 8px}h2:focus-visible,canvas:focus-visible{outline:2px solid #9bc3ff;outline-offset:-2px}
+
+/* Compact creator mode: full-width viewport with independently scrollable authoring panes below. */
+@media(max-width:760px){
+ .workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(180px,1fr) minmax(130px,.72fr);grid-template-areas:"viewport viewport" "workspace inspector"}
+ .workspace>aside:first-child{grid-area:workspace;min-width:0;padding:8px}
+ .workspace>article{grid-area:viewport;min-width:0}
+ .workspace>aside:last-child{grid-area:inspector;min-width:0;padding:8px}
+ .workspace button,.workspace legend{max-width:100%;overflow-wrap:anywhere}
+ header{gap:5px;padding:6px}header button{padding:5px 7px}
+ .editor-jumps{padding:4px 6px}footer{padding:6px;flex-wrap:wrap}
+ .touch-controls{gap:4px;left:4px;right:4px}.touch-controls button{min-width:44px;min-height:44px}
+ .viewport-tools{right:6px;left:6px}.viewport-tools button{padding:5px 7px}
+}
+@media(max-width:760px) and (orientation:landscape) and (max-height:500px){
+ main{height:auto;min-height:100dvh}.workspace{min-height:480px;flex:none;grid-template-rows:260px 220px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
