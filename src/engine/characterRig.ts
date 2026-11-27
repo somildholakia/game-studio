@@ -1,5 +1,5 @@
 import {Mesh,MeshBuilder,TransformNode,VertexData,VertexBuffer,type Scene} from '@babylonjs/core';
-import {defaultRig,motionPose,sampleJointClip,type Joint,type JointPose,type CharacterRig} from '../core/characterRig';
+import {defaultRig,motionPose,sampleRig,type Joint,type JointPose,type CharacterRig} from '../core/characterRig';
 import type {Entity} from '../core/project';
 import {limbSkin,skinLimb,type LimbSkin} from '../core/skinning';
 import {createMaterial,updateMaterial} from './material';
@@ -36,4 +36,4 @@ function poseRig(root:Mesh,pose:JointPose){const r=rigs.get(root);if(!r)return;f
 export function syncCharacterRig(root:Mesh,e:Entity){const r=rigs.get(root);if(!r)return;const style=e.rig??defaultRig;for(const part of r.parts)updateMaterial(part.mesh,{...e,color:part.channel==='shirt'?e.color:style[part.channel]});poseRig(root,style.pose);}
 export function animateCharacterRig(root:Mesh,style:CharacterRig|undefined,time:number,moving:boolean,grounded:boolean){const s=style??defaultRig;if(s.motion)poseRig(root,motionPose(s.pose,time,moving,grounded));else poseRig(root,s.pose);}
 
-export function animateDecorativeRig(root:Mesh,style:CharacterRig|undefined,time:number,preview:boolean){const clip=style?.clip;if(clip)poseRig(root,sampleJointClip(preview?{...clip,loop:false}:clip,time));}
+export function animateDecorativeRig(root:Mesh,style:CharacterRig|undefined,time:number,preview:boolean){if(style&&(style.clip||style.blend))poseRig(root,sampleRig(style,time,preview));}

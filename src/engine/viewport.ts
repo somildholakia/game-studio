@@ -58,7 +58,7 @@ export function mountViewport(canvas:HTMLCanvasElement,onSelect:(id:string)=>voi
  const m=entry.mesh;m.setEnabled(true);m.position.set(...e.position);m.rotationQuaternion=null;m.rotation.set(...e.rotation);m.scaling.set(...e.scale);if(m.material instanceof ShaderMaterial){m.material.setColor3('baseColor',GraphColor.FromHexString(e.color));m.material.wireframe=e.role==='trigger';}else updateMaterial(m,e);if(e.kind==='character')syncCharacterRig(m,e);}
  refreshShadows();refreshGizmo();
  }
- function applyAnimation(project:Project,time:number){for(const e of project.entities){if((!e.animation&&!e.rig?.clip)||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;if(e.kind==='character')animateDecorativeRig(m,e.rig,time,previewing);if(!e.animation)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
+ function applyAnimation(project:Project,time:number){for(const e of project.entities){if((!e.animation&&!e.rig?.clip&&!e.rig?.blend)||(e.kind==='ground'||e.kind==='terrain')||(e.role&&e.role!=='decoration'))continue;const m=meshes.get(e.id)?.mesh;if(!m)continue;if(e.kind==='character')animateDecorativeRig(m,e.rig,time,previewing);if(!e.animation)continue;const pose=sample(previewing?{...e.animation,loop:false}:e.animation,time);m.position.set(...pose.position);m.rotationQuaternion=null;m.rotation.set(...pose.rotation);m.scaling.set(...pose.scale);}}
  const render=()=>{
  if(contextLost||disposed)return;
  const delta=skipDelta?0:engine.getDeltaTime()/1000;skipDelta=false;

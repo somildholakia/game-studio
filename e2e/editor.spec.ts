@@ -623,3 +623,15 @@ test('author weighted skeletal limbs and retain the skinning mode',async({page})
  await rig.getByRole('button',{name:'Create joint animation'}).click();await expect(rig.getByRole('button',{name:'Preview joints'})).toBeVisible();
  await rig.getByRole('button',{name:'Preview joints'}).click();await expect(rig.getByRole('button',{name:'Stop joint preview'})).toBeVisible();
 });
+
+test('retarget another character clip and author a persistent blend',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ character',exact:true}).click();
+ await page.getByRole('group',{name:'character',exact:true}).getByLabel('Name',{exact:true}).fill('Source rig');
+ const rig=page.getByRole('group',{name:'Character Studio · Appearance and joints'});await rig.getByRole('button',{name:'Create joint animation'}).click();
+ await rig.getByLabel(/leftElbow/).fill('80');await rig.getByRole('button',{name:'Capture joint pose'}).click();
+ await page.getByRole('button',{name:'+ character',exact:true}).click();const blend=rig.getByRole('group',{name:'Animation blending and retargeting'});
+ await blend.getByLabel('Source character').selectOption({label:'Source rig'});await blend.getByRole('button',{name:'Retarget character clip'}).click();
+ await expect(blend.getByText('Secondary clip · 2 keys')).toBeVisible();await blend.getByLabel('Blend weight').fill('.75');
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.getByRole('button',{name:'character',exact:true}).click();
+ await expect(blend.getByLabel('Blend weight')).toHaveValue('0.75');await rig.getByRole('button',{name:'Preview blend'}).click();await expect(rig.getByRole('button',{name:'Stop blend preview'})).toBeVisible();
+});

@@ -77,3 +77,6 @@ Both shader and modifier drafts now have visual form controls: add bounded nodes
 
 ## Weighted skeletal limbs
 Character Studio offers optional smooth weighted limb meshes. Each arm and leg has two hierarchical joint transforms and a continuous tube with interpolated weights around the joint; CPU linear blend skinning updates vertex positions and normals in the shared editor/player renderer. Bind pose, blended joint transforms and endpoints have numerical tests. Rigid articulated parts remain the default. Smooth skinning is limited to procedural limbs, not arbitrary imported mesh weight painting or full-body skinning.
+
+## Animation blending and retargeting
+Decorative characters can blend a secondary canonical joint clip into their primary clip or rest pose with independent speed and weight. Copy clips from another character with different proportions or import named scalar channels through an explicit source-name/sign/rest-offset map. Each mapped key is validated against the canonical nine joint limits; the renderer samples both clips during preview and play. This supports the procedural sagittal rig, not arbitrary imported quaternion rigs, root motion or professional motion matching. Player locomotion remains separate.

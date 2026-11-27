@@ -1,8 +1,9 @@
 import {useState} from 'react';
 import {IKPanel} from './IKPanel';
-import {defaultRig,joints,neutralPose,captureJointPose,type CharacterRig} from '../core/characterRig';
-export function CharacterRigPanel({value,onChange,decorative,preview,onPreview}:{value?:CharacterRig;onChange:(r:CharacterRig)=>void;decorative:boolean;preview:number|null;onPreview:(time:number|null)=>void}){
- const rig=value??defaultRig;const [time,setTime]=useState(1);const clip=rig.clip,duration=clip?.keys.at(-1)?.time??0;const colors=['skin','hair','clothing','shoes'] as const;
+import {AnimationBlendPanel} from './AnimationBlendPanel';
+import {defaultRig,joints,neutralPose,captureJointPose,rigDuration,type JointClip,type CharacterRig} from '../core/characterRig';
+export function CharacterRigPanel({value,onChange,decorative,preview,onPreview,sources=[]}:{sources?:{id:string;name:string;clip:JointClip}[];value?:CharacterRig;onChange:(r:CharacterRig)=>void;decorative:boolean;preview:number|null;onPreview:(time:number|null)=>void}){
+ const rig=value??defaultRig;const [time,setTime]=useState(1);const clip=rig.clip,duration=rigDuration(rig);const colors=['skin','hair','clothing','shoes'] as const;
  return <fieldset><legend>Character Studio · Appearance and joints</legend><p className="hint">Edit an articulated low-poly character. Joint angles are in degrees. Automatic locomotion is applied to player characters in play mode.</p>
  {colors.map(k=><label key={k}>{k}<input type="color" value={rig[k]} onChange={e=>onChange({...rig,[k]:e.target.value})}/></label>)}
  <label>Limb skinning<select value={rig.skinMode??'rigid'} onChange={e=>onChange({...rig,skinMode:e.target.value as 'rigid'|'weighted'})}><option value="rigid">Articulated blocks</option><option value="weighted">Smooth weighted limbs</option></select></label>
@@ -18,5 +19,5 @@ export function CharacterRigPanel({value,onChange,decorative,preview,onPreview}:
  <div className="keyframe-list">{clip.keys.map(k=><div key={k.time}><span>{k.time.toFixed(2)}s</span><button onClick={()=>{onPreview(null);onChange({...rig,pose:{...k.pose}});}}>Load joints</button><button disabled={k.time===0} onClick={()=>onChange({...rig,clip:{...clip,keys:clip.keys.filter(x=>x.time!==k.time)}})}>Delete joint key</button></div>)}</div>
  <label>Joint preview<input type="range" min="0" max={Math.max(.01,duration)} step=".01" value={Math.min(preview??0,duration)} onChange={e=>onPreview(e.target.valueAsNumber)}/></label>
  <button onClick={()=>onPreview(preview===null?0:null)}>{preview===null?'Preview joints':'Stop joint preview'}</button>
- <button onClick={()=>{onPreview(null);onChange({...rig,clip:undefined});}}>Remove joint animation</button></>}</fieldset></fieldset>;
+ <button onClick={()=>{onPreview(null);onChange({...rig,clip:undefined});}}>Remove joint animation</button></>}<AnimationBlendPanel rig={rig} sources={sources} onChange={r=>{onPreview(null);onChange(r);}}/>{!clip&&rig.blend&&<><label>Blended preview<input type="range" min="0" max={Math.max(.01,duration)} step=".01" value={Math.min(preview??0,duration)} onChange={e=>onPreview(e.target.valueAsNumber)}/></label><button onClick={()=>onPreview(preview===null?0:null)}>{preview===null?'Preview blend':'Stop blend preview'}</button></>}</fieldset></fieldset>;
 }

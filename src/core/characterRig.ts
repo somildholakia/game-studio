@@ -3,7 +3,8 @@ export type Joint=typeof joints[number];
 export type JointPose=Record<Joint,number>;
 export type JointKey={time:number;pose:JointPose};
 export type JointClip={loop:boolean;keys:JointKey[]};
-export type CharacterRig={skin:string;hair:string;clothing:string;shoes:string;hairStyle:'none'|'cap'|'short';motion:boolean;pose:JointPose;clip?:JointClip;skinMode?:'rigid'|'weighted'};
+export type CharacterRig={skin:string;hair:string;clothing:string;shoes:string;hairStyle:'none'|'cap'|'short';motion:boolean;pose:JointPose;clip?:JointClip;skinMode?:'rigid'|'weighted';blend?:JointBlend};
+export type JointBlend={clip:JointClip;weight:number;speed:number};
 export const neutralPose=Object.fromEntries(joints.map(j=>[j,0])) as JointPose;
 export const defaultRig:CharacterRig={skin:'#d5a384',hair:'#382c27',clothing:'#476b92',shoes:'#283244',hairStyle:'short',motion:true,pose:neutralPose};
 function readPose(raw:unknown):JointPose{
@@ -36,12 +37,38 @@ export function readRig(raw:unknown):CharacterRig{
  if(raw===undefined)return structuredClone(defaultRig);
  const r=raw as CharacterRig;if(!r||typeof r.motion!=='boolean'||!['none','cap','short'].includes(r.hairStyle)||!r.pose)throw Error('Invalid character rig');
  const colors=['skin','hair','clothing','shoes'] as const;for(const k of colors)if(typeof r[k]!=='string'||!/^#[0-9a-f]{6}$/i.test(r[k]))throw Error('Invalid character color');
- const pose=readPose(r.pose);if(r.skinMode!==undefined&&!['rigid','weighted'].includes(r.skinMode))throw Error('Invalid skin mode');
- return {...(r.skinMode!==undefined?{skinMode:r.skinMode}:{}),skin:r.skin,hair:r.hair,clothing:r.clothing,shoes:r.shoes,hairStyle:r.hairStyle,motion:r.motion,pose,...(r.clip!==undefined?{clip:readJointClip(r.clip)}:{})};
+ const pose=readPose(r.pose);const blend=r.blend===undefined?undefined:readJointBlend(r.blend);if(r.skinMode!==undefined&&!['rigid','weighted'].includes(r.skinMode))throw Error('Invalid skin mode');
+ return {...(blend?{blend}:{}),...(r.skinMode!==undefined?{skinMode:r.skinMode}:{}),skin:r.skin,hair:r.hair,clothing:r.clothing,shoes:r.shoes,hairStyle:r.hairStyle,motion:r.motion,pose,...(r.clip!==undefined?{clip:readJointClip(r.clip)}:{})};
 }
 export function motionPose(base:JointPose,time:number,moving:boolean,grounded:boolean):JointPose{
  if(!grounded)return {...base,leftShoulder:-35,rightShoulder:-35,leftHip:-28,rightHip:16,leftKnee:35,rightKnee:18};
  if(!moving)return {...base};
  const wave=Math.sin(time*10);
  return {...base,leftShoulder:wave*28,rightShoulder:-wave*28,leftHip:-wave*32,rightHip:wave*32,leftKnee:Math.max(0,wave)*30,rightKnee:Math.max(0,-wave)*30,leftElbow:-12,rightElbow:-12};
+}
+
+export function readJointBlend(raw:unknown):JointBlend{
+ const b=raw as JointBlend;if(!b||!Number.isFinite(b.weight)||b.weight<0||b.weight>1||!Number.isFinite(b.speed)||b.speed<.25||b.speed>4)throw Error('Invalid animation blend');
+ return {clip:readJointClip(b.clip),weight:b.weight,speed:b.speed};
+}
+export function sampleRig(rig:CharacterRig,time:number,preview=false):JointPose{
+ const sample=(c:JointClip,t:number)=>sampleJointClip(preview?{...c,loop:false}:c,t);
+ const a=rig.clip?sample(rig.clip,time):rig.pose;
+ if(!rig.blend)return {...a};
+ const b=sample(rig.blend.clip,time*rig.blend.speed),w=rig.blend.weight;
+ return Object.fromEntries(joints.map(j=>[j,a[j]*(1-w)+b[j]*w])) as JointPose;
+}
+export function rigDuration(rig:CharacterRig):number{return Math.max(rig.clip?.keys.at(-1)?.time??0,(rig.blend?.clip.keys.at(-1)?.time??0)/(rig.blend?.speed??1));}
+/** Map named scalar sagittal channels into the canonical rig. Each target channel
+ * explicitly chooses a source name, direction and rest offset. No code execution. */
+export function retargetJointClip(raw:unknown,mapping:unknown):JointClip{
+ const input=raw as {loop:boolean;keys:{time:number;pose:Record<string,number>}[]};
+ if(!input||typeof input.loop!=='boolean'||!Array.isArray(input.keys)||input.keys.length<1||input.keys.length>128||!mapping||typeof mapping!=='object'||Array.isArray(mapping))throw Error('Invalid retarget input');
+ const map=mapping as Record<string,{source:string;sign:1|-1;offset:number}>;
+ for(const j of joints){const m=Object.hasOwn(map,j)?map[j]:undefined;if(!m||typeof m.source!=='string'||!m.source.trim()||m.source.length>100||!['number'].includes(typeof m.sign)||![1,-1].includes(m.sign)||!Number.isFinite(m.offset)||Math.abs(m.offset)>120)throw Error('Missing or invalid joint mapping: '+j);}
+ return readJointClip({loop:input.loop,keys:input.keys.map(k=>{
+ if(!k||!k.pose||typeof k.pose!=='object'||Array.isArray(k.pose))throw Error('Invalid source pose');
+ const pose=Object.fromEntries(joints.map(j=>{const m=map[j],v=Object.hasOwn(k.pose,m.source)?k.pose[m.source]:undefined;if(typeof v!=='number'||!Number.isFinite(v))throw Error('Missing source channel: '+m.source);return [j,v*m.sign+m.offset];}));
+ return {time:k.time,pose};
+ })});
 }
