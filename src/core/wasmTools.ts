@@ -16,6 +16,7 @@ export function inspectWasm(bytes:Uint8Array):void{
  // Custom metadata, function types, imports, functions, globals, exports and code only.
  // Reject tables, memory, data, start, element, tags and unknown proposals.
  if(![0,1,2,3,6,7,10].includes(id))throw Error('Wasm extension uses a forbidden section');
+ if(id===1){const count=uint();if(count>64)throw Error('Too many Wasm function types');for(let j=0;j<count;j++){if(i>=end||bytes[i++]!==0x60)throw Error('Only numeric Wasm function types are permitted');const params=uint();if(params>16)throw Error('Too many Wasm parameters');for(let k=0;k<params;k++)if(i>=end||![0x7c,0x7d,0x7e,0x7f].includes(bytes[i++]))throw Error('Only numeric Wasm parameters are permitted');const results=uint();if(results>1)throw Error('Too many Wasm results');for(let k=0;k<results;k++)if(i>=end||![0x7c,0x7d,0x7e,0x7f].includes(bytes[i++]))throw Error('Only numeric Wasm results are permitted');}if(i!==end)throw Error('Invalid Wasm type section');}
  i=end;
  }
 }
