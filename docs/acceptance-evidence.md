@@ -124,3 +124,16 @@ At b342165 both workflows above passed. Validate recorded 50 unit files / 294 te
 | **Total** | **80/100 (40/50); 78/100 strict (39/50)** |
 
 Additional candidate: bounded gameplay profiling, frame/simulation/render-submission measurements across desktop and compact software-rendered browser profiles (92b102b). Full CI required before credit; this is not physical GPU timing or physical-device validation. Additional GLB streaming regression and optional opt-in live AI harness do not independently earn points. No production gate is waived.
+
+
+## Verified runtime profiling checkpoint at df19bb7
+
+At [df19bb7](https://github.com/somildholakia/game-studio/commit/df19bb7272f8d358ce3e44b8795fa04180b38d4e), [Validate 46009752598](https://github.com/somildholakia/game-studio/actions/runs/46009752598) and [browser compatibility 46009752620](https://github.com/somildholakia/game-studio/actions/runs/46009752620) both succeeded. Validate recorded 51 unit files / 296 tests, 56 Chromium E2E tests, dependency audit, production build, local load and static manifest checks. All three matrix jobs independently passed 56 E2E tests (168 executions).
+
+The unchanged gameplay/runtime profiling and device-budget benchmarks item has its controlled reference evidence: 126-entity active gameplay in both full-size desktop and compact software-rendered browser profiles. Desktop/compact p95 frame intervals in ms: Chromium 61.2/97.2, Firefox 45/19, WebKit 32/19. Corresponding simulation p95: 1.4/2, 3/1, 2/1; render submission p95: 6.9/3.5, 7/2, 6/2. The larger compiled simulation CPU workload p95 was 3.078 ms (16.7 ms budget). These meet the documented controlled regression budgets, not physical-device FPS/GPU budgets.
+
+**82/100 (41/50) controlled at this tested revision.** 80/100 if only physical GPU recovery is excluded under the previous strict interpretation; 78/100 if both GPU recovery and the new device-profile item require physical hardware. No physical device evidence is added. No other acceptance item or production gate is credited.
+
+### Subsequent backup/authentication implementation (no additional credit)
+
+The filesystem backup adapter and authenticated HTTP reference API add immutable version history, SHA-256 integrity checking, optimistic revision conflicts, restore as a new revision, private tenant namespaces, read/write scoped opaque credentials, bounded request and per-tenant storage quotas. Six new Node tests passed locally on Node 22.16.0, including actual loopback HTTP across independent tenant credentials and reopen/restore. Tested Git blob hashes: backup-store.mjs b16badefe0962021bcf7b5713f3d23834e820bbf; backup-store.test.mjs 3398842c1878f4514873a542d86dcc4f4c909fc2; backup-api.mjs 75e32bb45015d481499c09846ac8289b64547fbc; backup-api.test.mjs 546dc70203e0e98bb73e5d79aaa4596284f57248. All four blobs were read back from GitHub and matched. Latest-head full CI must pass. This is not deployed object storage, disaster recovery, public identity/OIDC, production tenant isolation, or editor integration; no cloud/auth rubric points are added.
