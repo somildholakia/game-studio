@@ -464,3 +464,15 @@ test('run a parameterized creator tool as an undoable edit',async({page})=>{
  await tool.getByRole('button',{name:'Apply creator tool'}).click();await expect(page.getByRole('button',{name:'Tool platform solid'})).toBeVisible();
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Tool platform solid'})).toHaveCount(0);
 });
+
+test('suspend simulation during WebGL context loss and resume after recovery',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Load Treasure Run'}).click();await page.getByLabel('Show level timer').check();await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ await expect(page.getByRole('timer')).toHaveText(/Time: 0:0[0-9]/);
+ const supported=await page.locator('canvas').evaluate(canvas=>{const c=canvas as HTMLCanvasElement;const gl=c.getContext('webgl2')??c.getContext('webgl');const ext=gl?.getExtension('WEBGL_lose_context');if(!ext)return false;Reflect.set(c,'testContextLoss',ext);return true;});
+ test.skip(!supported,'WEBGL_lose_context is unavailable in this browser configuration');
+ await page.locator('canvas').evaluate(c=>(Reflect.get(c,'testContextLoss') as WEBGL_lose_context).loseContext());
+ await expect(page.getByTestId('graphics-recovery')).toBeVisible({timeout:15000});
+ const frozen=await page.getByRole('timer').textContent();await page.waitForTimeout(1300);await expect(page.getByRole('timer')).toHaveText(frozen!);
+ await page.locator('canvas').evaluate(c=>(Reflect.get(c,'testContextLoss') as WEBGL_lose_context).restoreContext());
+ await expect(page.getByTestId('graphics-recovery')).toHaveCount(0,{timeout:30000});await expect(page.getByRole('timer')).not.toHaveText(frozen!,{timeout:15000});
+});

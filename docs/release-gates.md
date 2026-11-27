@@ -34,4 +34,6 @@ The cross-browser workflow is configured for relevant pull request changes and m
 
 A dependency lockfile was generated in successful Validate run 45829995781; CI now uses npm ci. The current PR head `faf31081f385acd939dc436d3d8f6e2d9021bbca` passed Validate run 45832800472, including clean install, unit tests, production build, and Chromium end-to-end tests. Browser compatibility run 45832800491 passed the end-to-end suite in Chromium, Firefox, and WebKit. These checks cover automated desktop browser runs only; real-device, GPU, context-loss, performance, security, durability, scale, and full product release gates remain open.
 
+Context-loss handling now suspends the simulation during Babylon resource restoration and defers editor updates. A browser regression uses WEBGL_lose_context when supported; real-device recovery and failure-path validation remain open.
+
 No live third-party credentials are used in tests. Recheck the current PR head's Actions before treating these checkpoint results as current.
