@@ -69,3 +69,25 @@ The prior 60/58 baseline at 6e77de0 remains the last fully green revision. At bb
 These six bounded candidates could yield 72/100 controlled or 70/100 with the existing physical-GPU caveat, only after all required evidence succeeds. No score inflation for production claims. See PR #1 for current Actions.
 
 At b0f1de4, the upgraded Vitest 5.1.2 lockfile matches CI-generated Git blob 9663e1724c955ffaa53684b5312efa2779598ba1. Validate 46002409854 passed unit tests, metadata review, advisory audit, production build and local load/manifest checks. The downloaded audit artifact 15198038946 confirms zero known npm advisory vulnerabilities and 97 packages with zero metadata findings. The Chromium matrix job 140517127303 reported 45 passes and three ambiguous leftElbow locator failures caused by the retarget JSON textarea label. Tests now target slider roles and textareas have explicit accessible names; full rerun required. Previous Firefox trace confirms WebGL driver exhaustion; added bounded fresh-canvas startup retries, actual injected failure regression, linked merge order and renderer mesh-buffer tests. Do not credit a failed or superseded run.
+
+## Verified 72-point controlled checkpoint (70-point strict interpretation)
+
+At [53290c2](https://github.com/somildholakia/game-studio/commit/53290c2250f9eb3bbbfdf22b64aa026a8313ed5a), [Validate 46003016867](https://github.com/somildholakia/game-studio/actions/runs/46003016867) and [Browser compatibility 46003017004](https://github.com/somildholakia/game-studio/actions/runs/46003017004) both concluded success on November 27, 2026. All six previously listed candidate increments are now credited at their stated bounded scope. Evidence: 44 unit files / 226 passing unit tests, nine passing Node tests, 49/49 end-to-end tests each in Chromium, Firefox and WebKit without skips, production build, [verified static artifact](https://github.com/somildholakia/game-studio/actions/runs/46003016867/artifacts/15198563635), [dependency security review](https://github.com/somildholakia/game-studio/actions/runs/46003016867/artifacts/15198423370) (97 packages, no inventory findings, zero known npm vulnerabilities), and [room load report](https://github.com/somildholakia/game-studio/actions/runs/46003016867/artifacts/15198843108). The previously failing Firefox startup and ambiguous animation selectors now pass.
+
+| Category | Controlled score |
+|---|---:|
+| Foundation | 10/10 (8/10 under physical-GPU interpretation) |
+| Editor | 8/10 |
+| Modeling | 10/10 |
+| Animation | 10/10 |
+| Assets/materials | 8/10 |
+| Gameplay/runtime | 6/10 |
+| AI/tools | 6/10 |
+| Multiplayer/collaboration | 6/10 |
+| Publishing/cloud | 2/10 |
+| Release quality | 6/10 |
+| **Total** | **72/100 (36/50); strictly 70/100 (35/50)** |
+
+Measured CI reference: mesh pipeline p95 90.727 ms; simulation CPU p95 1.016 ms; loopback 256 clients, 1,426 updates/s, p95 100 ms. Software-rendered 31,744-triangle browser p95 desktop/compact frame intervals: Chromium 66.7/116.6 ms, Firefox 34/33.18 ms, WebKit 47/37 ms. These are bounded reference workloads, not physical GPU or production-scale certification. The six new items are not evidence of general arbitrary CSG, full imported skeleton skinning, arbitrary quaternion retargeting, real-time coediting, independent penetration testing or unrestricted plugins. Mandatory production gates remain open.
+
+Development continued beyond that checkpoint: [0845612](https://github.com/somildholakia/game-studio/commit/0845612779369cfccc9125187d79de157dcd6b2a) adds bounded gzip project packages with integrity checks and a two-slot model decoder queue; [15fa27b](https://github.com/somildholakia/game-studio/commit/15fa27b7294e1d4b6e7d8b99543987a5b6cc1b09) prevents stale queued jobs from starting. Isolated local Node checks passed for the exact decoder queue blob, plus compression/checksum/size tests using a stub project parser. Full integration and browser CI are required at the new head. This is not CDN/progressive network asset streaming or durable cloud backup; no extra rubric points are claimed.
