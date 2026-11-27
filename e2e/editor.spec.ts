@@ -427,3 +427,14 @@ test('capture decorative character joint animation and preserve it across reload
  await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.getByRole('button',{name:'character',exact:true}).click();
  await expect(page.getByRole('group',{name:'Joint animation timeline',exact:true}).getByText('1.00s',{exact:true})).toBeVisible();
 });
+
+test('import an embedded image texture and restore it after reload',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ box',exact:true}).click();
+ const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=8;const x=c.getContext('2d')!;x.fillStyle='#33aa77';x.fillRect(0,0,8,8);return c.toDataURL('image/png').split(',')[1];});
+ const panel=page.getByRole('group',{name:'Image texture',exact:true});
+ await panel.getByLabel('Import image texture').setInputFiles({name:'paint.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+ await expect(panel.getByText('paint.png',{exact:true})).toBeVisible();
+ await panel.getByLabel('Image horizontal repeat').fill('2');await expect(page.locator('footer')).toContainText('Saved on this device');
+ await page.reload();await page.getByRole('button',{name:'box',exact:true}).last().click();
+ await expect(page.getByRole('group',{name:'Image texture',exact:true}).getByText('paint.png',{exact:true})).toBeVisible();
+});

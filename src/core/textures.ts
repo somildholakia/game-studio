@@ -22,3 +22,23 @@ export function texturePixels(style:TextureStyle):Uint8Array{
  const i=(y*n+x)*4;for(let k=0;k<3;k++)pixels[i+k]=Math.round(255+(c[k]-255)*f);pixels[i+3]=255;
  }return pixels;
 }
+
+// Store bounded, normalized opaque RGB(A) pixels, not untrusted compressed image bytes or remote URLs.
+export const IMAGE_TEXTURE_SIZE=128;
+export const MAX_IMAGE_TEXTURES=48;
+export type ImageTexture={name:string;data:string;repeatU:number;repeatV:number};
+const imageBytes=IMAGE_TEXTURE_SIZE**2*4;
+export function readImageTexture(raw:unknown):ImageTexture{
+ const t=raw as ImageTexture;
+ if(!t||typeof t.name!=='string'||!t.name.trim()||t.name.length>200||typeof t.data!=='string'||t.data.length!==Math.ceil(imageBytes/3)*4||!/^[A-Za-z0-9+/]+==$/.test(t.data)||![t.repeatU,t.repeatV].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=.25&&n<=32))throw Error('Invalid embedded image texture');
+ const bytes=atob(t.data);if(bytes.length!==imageBytes||btoa(bytes)!==t.data)throw Error('Invalid image texture pixels');
+ return {name:t.name,data:t.data,repeatU:t.repeatU,repeatV:t.repeatV};
+}
+export function encodeImageTexture(name:string,pixels:Uint8ClampedArray|Uint8Array):ImageTexture{
+ if(pixels.length!==imageBytes)throw Error('Unexpected image dimensions');
+ let binary='';for(let i=0;i<pixels.length;i+=8192)binary+=String.fromCharCode(...pixels.subarray(i,i+8192));
+ return readImageTexture({name:name.slice(0,200),data:btoa(binary),repeatU:1,repeatV:1});
+}
+export function decodeImageTexture(texture:ImageTexture):Uint8Array<ArrayBuffer>{
+ return Uint8Array.from(atob(texture.data),c=>c.charCodeAt(0));
+}

@@ -11,7 +11,7 @@ type Command={op:'add';kind:Entity['kind'];patch:Editable}|{op:'edit';id:string;
 export type Plan={version:1;summary:string;commands:Command[]};
 function record(value:unknown):Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Expected an object');return value as Record<string,unknown>;}
 function keys(value:Record<string,unknown>,allowed:readonly string[]){for(const key of Object.keys(value))if(!allowed.includes(key))throw Error('Unsupported field: '+key);}
-function patch(value:unknown):Editable{const p=record(value);keys(p,permittedFields);return p as Editable;}
+function patch(value:unknown):Editable{const p=record(value);keys(p,permittedFields);if(p.material&&typeof p.material==='object'&&Object.hasOwn(p.material,'imageTexture'))throw Error('AI cannot supply embedded image pixels');return p as Editable;}
 export function readPlan(raw:string):Plan{
  if(raw.length>100000)throw Error('Plan exceeds 100,000 characters');
  const p=record(JSON.parse(raw));keys(p,['version','summary','commands']);

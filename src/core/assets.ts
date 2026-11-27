@@ -96,6 +96,10 @@ function jpegPixels(bytes:Uint8Array):number{
  }
  return fail();
 }
+export function validateTextureImage(bytes:Uint8Array,mime:string):void{
+ if(bytes.length>MAX_GLB_BYTES||!bytes.length)throw Error('Image must be at most 2 MiB');
+ if(mime==='image/png')pngPixels(bytes);else if(mime==='image/jpeg')jpegPixels(bytes);else throw Error('Choose a static PNG or JPEG image');
+}
 function validateImages(json:any,bin:Uint8Array):void{
  const images=json.images===undefined?[]:json.images,views=json.bufferViews??[];
  const textures=json.textures===undefined?[]:json.textures;

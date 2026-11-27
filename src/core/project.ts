@@ -12,7 +12,7 @@ import {readPresentation,type Presentation} from './presentation';
 import {readGraphics,type GraphicsSettings} from './graphics';
 import {readBody,MAX_BODIES,type BodySettings} from '../runtime/bodies';
 import {readPatrol,type Patrol} from '../runtime/patrol';
-import {readTexture,type TextureStyle} from './textures';
+import {readTexture,readImageTexture,MAX_IMAGE_TEXTURES,type TextureStyle,type ImageTexture} from './textures';
 import {projections,type Projection} from './uv';
 import type {Prefab} from './prefabs';
 export type Vec3=[number,number,number];
@@ -20,7 +20,7 @@ export const roles=['decoration','player','solid','collectible','goal','hazard',
 export type Role=typeof roles[number];
 export const kinds=['box','sphere','ground','cylinder','cone','torus','character','model','mesh','terrain'] as const;
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
-export type MaterialStyle={metallic:number;roughness:number;emissive:string;texture?:TextureStyle};
+export type MaterialStyle={metallic:number;roughness:number;emissive:string;texture?:TextureStyle;imageTexture?:ImageTexture};
 export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string;body?:BodySettings;patrol?:Patrol;uvProjection?:Projection};
 export type Project={version:1;name:string;entities:Entity[];assets?:ModelAsset[];prefabs?:Prefab[];physics?:PhysicsSettings;logic?:Logic;audio?:AudioSettings;environment?:Environment;sceneId?:string;sceneName?:string;levels?:SceneData[];sceneOrder?:string[];presentation?:Presentation;graphics?:GraphicsSettings};
 export function entity(kind:Entity['kind']):Entity {
@@ -39,6 +39,7 @@ export function parseProject(raw:string):Project {
  const p=JSON.parse(raw);
  if(!p||p.version!==1||typeof p.name!=='string'||p.name.length>200||!Array.isArray(p.entities)||p.entities.length>10000)throw Error('Invalid project');
  const assets=validateAssets(p.assets),assetIds=new Set(assets.map(a=>a.id));
+ let imageCount=0;
  function readEntity(e:any):Entity {
  if(!e||typeof e.id!=='string'||!e.id||e.id.length>200||typeof e.name!=='string'||e.name.length>200||!kinds.includes(e.kind)||!vec(e.position)||!vec(e.rotation)||!vec(e.scale)||typeof e.color!=='string'||!/^#[0-9a-f]{6}$/i.test(e.color)||(e.role!==undefined&&!roles.includes(e.role))||(['ground','model','mesh','terrain'].includes(e.kind)&&e.role&&e.role!=='decoration')||(e.kind==='model'&&!assetIds.has(e.assetId)))throw Error('Invalid entity');
  const result:Entity={id:e.id,name:e.name,kind:e.kind,position:e.position,rotation:e.rotation,scale:e.scale,color:e.color,role:e.role??'decoration'};
@@ -50,7 +51,7 @@ export function parseProject(raw:string):Project {
  if(e.animation!==undefined)result.animation=readClip(e.animation);
  if(e.kind==='mesh'){result.mesh=readMesh(e.mesh);if(e.uvProjection!==undefined){if(!projections.includes(e.uvProjection))throw Error('Invalid UV projection');result.uvProjection=e.uvProjection;}}
  if(e.kind==='terrain'){if(!validTerrainTransform(result))throw Error('Terrain must be axis-aligned with positive bounded scale');result.terrain=readTerrain(e.terrain);delete result.animation;}
- if(e.material!==undefined){const m=e.material;if(!m||![m.metallic,m.roughness].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1)||typeof m.emissive!=='string'||!/^#[0-9a-f]{6}$/i.test(m.emissive))throw Error('Invalid material');result.material={metallic:m.metallic,roughness:m.roughness,emissive:m.emissive,...(m.texture!==undefined?{texture:readTexture(m.texture)}:{})};}
+ if(e.material!==undefined){const m=e.material;if(!m||![m.metallic,m.roughness].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1)||typeof m.emissive!=='string'||!/^#[0-9a-f]{6}$/i.test(m.emissive))throw Error('Invalid material');result.material={metallic:m.metallic,roughness:m.roughness,emissive:m.emissive,...(m.texture!==undefined?{texture:readTexture(m.texture)}:{})};if(m.imageTexture!==undefined){if(m.texture!==undefined)throw Error('Choose one material texture source');if(++imageCount>MAX_IMAGE_TEXTURES)throw Error('Embedded image texture limit exceeded');result.material.imageTexture=readImageTexture(m.imageTexture);}}
  if(e.kind==='character'){const c=e.character??{bodyWidth:1,headSize:1,limbLength:1};if(!proportion(c.bodyWidth)||!proportion(c.headSize)||!proportion(c.limbLength))throw Error('Invalid character proportions');result.character={bodyWidth:c.bodyWidth,headSize:c.headSize,limbLength:c.limbLength};if(e.rig!==undefined)result.rig=readRig(e.rig);}
  return result;
  }
