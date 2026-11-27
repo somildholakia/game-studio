@@ -160,7 +160,7 @@ export function validateGlb(bytes:Uint8Array):void {
  if(v.getUint32(0,true)!==0x46546c67||v.getUint32(4,true)!==2||v.getUint32(8,true)!==bytes.length)fail();
  const n=v.getUint32(12,true);
  if(n%4!==0||n>bytes.length-20||v.getUint32(16,true)!==0x4e4f534a)fail();
- let json:any;try{json=JSON.parse(new TextDecoder().decode(bytes.subarray(20,20+n)));}catch{fail();}
+ let json:any;try{json=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(20,20+n)));}catch{fail();}
  if(json?.asset?.version!=='2.0'||json.extensionsUsed?.length||json.extensionsRequired?.length||json.extensions||!Array.isArray(json.meshes)||!json.meshes.length)fail();
  // Reject externally fetched resources and nested extension payloads.
  const queue:unknown[]=[json];let visited=0;

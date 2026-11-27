@@ -83,3 +83,6 @@ Decorative characters can blend a secondary canonical joint clip into their prim
 
 ## Asynchronous collaborative editing
 Export a common base project and share it with a teammate; each author edits independently. Collaborative project merge takes that base, the current local workspace and an incoming JSON snapshot. It normalizes active-level selection, merges independent stable-ID changes, surfaces conflicting fields/deletions/order for explicit resolution, and validates all project invariants before applying one undoable change. Stale reviews cannot overwrite newer workspace edits. This is asynchronous file-based collaboration, not live co-editing, CRDT transport or automatic Git conflict commits. Geometry, animation and other coupled structures are treated conservatively; invalid combined projects require separate edits.
+
+## Security review
+The project parser has a central 10-million-character input bound and GLB JSON requires valid UTF-8. The deterministic fuzz suite mutates project and GLB fixtures and exercises unsafe plan/tool inputs. CI inventories lockfile license, integrity and registry metadata, runs npm advisory audit and retains both reports. See [security review](security-review.md) for scope and residual threats. An audit failure must be addressed, not ignored.

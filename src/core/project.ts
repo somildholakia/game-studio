@@ -40,6 +40,7 @@ export function duplicateEntity(e:Entity):Entity {
 const vec=(v:unknown):v is Vec3=>Array.isArray(v)&&v.length===3&&v.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=100000);
 const proportion=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n)&&n>=.6&&n<=1.4;
 export function parseProject(raw:string):Project {
+ if(typeof raw!=='string'||raw.length>10_000_000)throw Error('Project exceeds 10 MB');
  const p=JSON.parse(raw);
  if(!p||p.version!==1||typeof p.name!=='string'||p.name.length>200||!Array.isArray(p.entities)||p.entities.length>10000)throw Error('Invalid project');
  const assets=validateAssets(p.assets),assetIds=new Set(assets.map(a=>a.id));

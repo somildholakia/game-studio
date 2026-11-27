@@ -18,7 +18,18 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
+      - run: node scripts/dependency-review.mjs
       - run: npm test
+      - name: Audit locked dependencies
+        run: npm audit --audit-level=high --json > reports/npm-audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-security-review
+          path: |
+            reports/dependency-review.json
+            reports/npm-audit.json
+          if-no-files-found: ignore
       - run: npm run build
       - run: node --test scripts/*.test.mjs
       - run: node scripts/room-load.mjs reports/room-load.json
