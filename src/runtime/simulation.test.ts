@@ -163,3 +163,30 @@ it('expires buffered presses and clears both aids on respawn',()=>{
  s=step(p,{...s,position:[0,-1000,0],bufferRemaining:.05,coyoteRemaining:.1},{x:0,z:0},.005);
  expect(s.bufferRemaining).toBe(0);expect(s.coyoteRemaining).toBe(0);
 });
+
+it('opens a counter gate after collecting a key and uses the same state for collision',()=>{
+ const p:Project={version:1,name:'Door',entities:[
+ {...entity('box'),role:'player',position:[0,.75,0]},
+ {...entity('box'),id:'door',role:'solid',position:[3,.75,0],gate:{key:'keys',comparison:'gte',value:1}},
+ {...entity('sphere'),role:'collectible',position:[-3,.75,0]}],
+ logic:{autoWin:false,rules:[{id:'key',event:'collect',minScore:0,action:{kind:'counter',key:'keys',mode:'add',amount:1}}]}};
+ let s=begin(p);for(let i=0;i<25;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.position[0]).toBeCloseTo(1.5);expect(s.openGates.size).toBe(0);
+ for(let i=0;i<25;i++)s=step(p,s,{x:-1,z:0},.05);
+ expect(s.openGates.has('door')).toBe(true);
+ for(let i=0;i<40;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.position[0]).toBeGreaterThan(3);
+});
+it('defers closing an open gate while the player occupies it',()=>{
+ const p:Project={version:1,name:'Door',entities:[
+ {...entity('box'),role:'player',position:[0,.75,0]},
+ {...entity('box'),id:'door',role:'solid',position:[0,.75,0],gate:{key:'keys',comparison:'eq',value:0}}],
+ logic:{autoWin:false,rules:[{id:'close',event:'second',minScore:0,action:{kind:'counter',key:'keys',mode:'set',amount:1}}]}};
+ let s=begin(p);expect(s.openGates.has('door')).toBe(true);
+ for(let i=0;i<25;i++)s=step(p,s,{x:0,z:0},.05);
+ expect(s.openGates.has('door')).toBe(true);
+ for(let i=0;i<15;i++)s=step(p,s,{x:1,z:0},.05);
+ expect(s.openGates.size).toBe(0);
+ for(let i=0;i<15;i++)s=step(p,s,{x:-1,z:0},.05);
+ expect(s.position[0]).toBeCloseTo(1.5);
+});

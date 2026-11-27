@@ -89,3 +89,9 @@ it('accepts validated decorative character joint animation in AI plans',async()=
  const preview=previewPlan(p,plan([{op:'add',kind:'character',patch:{name:'Animated NPC',rig}}]));expect(preview.next.entities.at(-1)?.rig?.clip).toEqual(rig.clip);
  expect(()=>previewPlan(p,plan([{op:'add',kind:'character',patch:{rig:{...rig,clip:{loop:true,keys:[{time:1,pose:neutralPose}]}}}}]))).toThrow();
 });
+
+it('validates counter-controlled solid gates in AI plans',()=>{
+ const p=initialProject(),id=p.entities[1].id,gate={key:'keys',comparison:'gte',value:1};
+ const result=previewPlan(p,plan([{op:'edit',id,patch:{role:'solid',gate}}]));expect(result.next.entities[1].gate).toEqual(gate);
+ expect(()=>previewPlan(p,plan([{op:'edit',id,patch:{role:'solid',gate:{...gate,key:'constructor'}}}]))).toThrow();
+});

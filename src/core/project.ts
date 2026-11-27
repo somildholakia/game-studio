@@ -1,6 +1,6 @@
 import {validateAssets,type ModelAsset} from './assets';
 import {readPhysics,type PhysicsSettings} from '../runtime/physicsSettings';
-import {readLogic,type Logic} from '../runtime/rules';
+import {readLogic,readCounterCondition,type Logic,type CounterCondition} from '../runtime/rules';
 import {readClip,type Clip} from './animation';
 import {cubeMesh,readMesh,type MeshData} from './mesh';
 import {readAudio,type AudioSettings} from '../runtime/audio';
@@ -21,7 +21,7 @@ export type Role=typeof roles[number];
 export const kinds=['box','sphere','ground','cylinder','cone','torus','character','model','mesh','terrain'] as const;
 export type CharacterStyle={bodyWidth:number;headSize:number;limbLength:number};
 export type MaterialStyle={metallic:number;roughness:number;emissive:string;texture?:TextureStyle;imageTexture?:ImageTexture};
-export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string;body?:BodySettings;patrol?:Patrol;uvProjection?:Projection};
+export type Entity={id:string;name:string;kind:typeof kinds[number];position:Vec3;rotation:Vec3;scale:Vec3;color:string;role?:Role;assetId?:string;character?:CharacterStyle;material?:MaterialStyle;animation?:Clip;mesh?:MeshData;terrain?:TerrainSettings;rig?:CharacterRig;prefabId?:string;body?:BodySettings;patrol?:Patrol;gate?:CounterCondition;uvProjection?:Projection};
 export type Project={version:1;name:string;entities:Entity[];assets?:ModelAsset[];prefabs?:Prefab[];physics?:PhysicsSettings;logic?:Logic;audio?:AudioSettings;environment?:Environment;sceneId?:string;sceneName?:string;levels?:SceneData[];sceneOrder?:string[];presentation?:Presentation;graphics?:GraphicsSettings};
 export function entity(kind:Entity['kind']):Entity {
  return {id:crypto.randomUUID(),name:kind,kind,position:[0,kind==='ground'||kind==='terrain'?0:1,0],rotation:[0,0,0],scale:[1,1,1],color:'#6688bb',role:'decoration',...(kind==='terrain'?{terrain:{...defaultTerrain},color:'#527c50'}:{}),...(kind==='mesh'?{mesh:cubeMesh()}:{}),...(kind==='character'?{character:{bodyWidth:1,headSize:1,limbLength:1}}:{})};
@@ -47,6 +47,7 @@ export function parseProject(raw:string):Project {
  if(e.kind==='model')result.assetId=e.assetId;
  if(e.role==='trigger'&&e.kind!=='box')throw Error('Trigger zones require box geometry');
  if(e.role==='dynamic'){if(!['box','sphere','cylinder','cone','torus'].includes(e.kind))throw Error('Unsupported dynamic body geometry');result.body=readBody(e.body);}
+ if(e.gate!==undefined&&e.role==='solid')result.gate=readCounterCondition(e.gate);
  if(e.patrol!==undefined&&(e.role==='hazard'||e.role==='collectible'))result.patrol=readPatrol(e.patrol);
  if(e.animation!==undefined)result.animation=readClip(e.animation);
  if(e.kind==='mesh'){result.mesh=readMesh(e.mesh);if(e.uvProjection!==undefined){if(!projections.includes(e.uvProjection))throw Error('Invalid UV projection');result.uvProjection=e.uvProjection;}}

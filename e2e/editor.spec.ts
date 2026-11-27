@@ -438,3 +438,12 @@ test('import an embedded image texture and restore it after reload',async({page}
  await page.reload();await page.getByRole('button',{name:'box',exact:true}).last().click();
  await expect(page.getByRole('group',{name:'Image texture',exact:true}).getByText('paint.png',{exact:true})).toBeVisible();
 });
+
+test('author a counter-controlled gate and undo its settings',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ box',exact:true}).click();
+ await page.getByLabel('Gameplay role').selectOption('solid');
+ const gate=page.getByRole('group',{name:'Counter gate',exact:true});await gate.getByLabel('Open using a counter').check();
+ await expect(gate.getByLabel('Gate threshold')).toHaveValue('1');await gate.getByLabel('Gate threshold').fill('3');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(gate.getByLabel('Gate threshold')).toHaveValue('1');
+ await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(gate.getByLabel('Gate threshold')).toHaveValue('3');
+});
