@@ -538,3 +538,15 @@ test('keyboard navigation reaches authoring controls and exposes selection',asyn
  await page.getByRole('button',{name:'Focus viewport'}).focus();await page.keyboard.press('Enter');await expect(page.locator('canvas')).toBeFocused();
  await page.getByRole('button',{name:'Import project',exact:true}).focus();const chooser=page.waitForEvent('filechooser');await page.keyboard.press('Enter');await chooser;
 });
+
+test('solve a character limb target and capture the pose',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'+ character',exact:true}).click();
+ const ik=page.getByRole('group',{name:'Inverse kinematics · limb target'});await ik.getByRole('button',{name:'Solve limb pose'}).click();
+ const rig=page.getByRole('group',{name:'Character Studio · Appearance and joints'});
+ await expect(rig.getByLabel(/leftElbow/)).toHaveValue('90');
+ await rig.getByRole('button',{name:'Create joint animation',exact:true}).click();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(rig.getByLabel(/leftElbow/)).toHaveValue('0');await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(rig.getByLabel(/leftElbow/)).toHaveValue('90');
+ await expect(page.locator('footer')).toContainText('Saved on this device');await page.reload();await page.locator('.entity').filter({hasText:'character'}).click();await expect(rig.getByLabel(/leftElbow/)).toHaveValue('90');
+ await ik.getByLabel('Target down').fill('2');await ik.getByLabel('Target forward').fill('2');await ik.getByRole('button',{name:'Solve limb pose'}).click();await expect(ik.getByRole('alert')).toContainText('outside');
+});

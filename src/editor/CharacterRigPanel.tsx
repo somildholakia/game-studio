@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {IKPanel} from './IKPanel';
 import {defaultRig,joints,neutralPose,captureJointPose,type CharacterRig} from '../core/characterRig';
 export function CharacterRigPanel({value,onChange,decorative,preview,onPreview}:{value?:CharacterRig;onChange:(r:CharacterRig)=>void;decorative:boolean;preview:number|null;onPreview:(time:number|null)=>void}){
  const rig=value??defaultRig;const [time,setTime]=useState(1);const clip=rig.clip,duration=clip?.keys.at(-1)?.time??0;const colors=['skin','hair','clothing','shoes'] as const;
@@ -7,7 +8,7 @@ export function CharacterRigPanel({value,onChange,decorative,preview,onPreview}:
  <label>Hair style<select value={rig.hairStyle} onChange={e=>onChange({...rig,hairStyle:e.target.value as CharacterRig['hairStyle']})}>{['none','short','cap'].map(k=><option key={k}>{k}</option>)}</select></label>
  <label><input type="checkbox" checked={rig.motion} onChange={e=>onChange({...rig,motion:e.target.checked})}/> Automatic walk and jump poses</label>
  {joints.map(j=><label key={j}>{j} · {rig.pose[j]}°<input type="range" min="-120" max="120" step="1" value={rig.pose[j]} onChange={e=>onChange({...rig,pose:{...rig.pose,[j]:e.target.valueAsNumber}})}/></label>)}
- <button onClick={()=>onChange({...rig,pose:{...neutralPose}})}>Reset joint pose</button>
+ <button onClick={()=>onChange({...rig,pose:{...neutralPose}})}>Reset joint pose</button><IKPanel pose={rig.pose} onChange={pose=>{onPreview(null);onChange({...rig,pose});}}/>
  <fieldset disabled={!decorative}><legend>Joint animation timeline</legend><p className="hint">Decorative characters only. Edit the joint sliders and capture poses at different times. The preview scrubs both joint and transform timelines.</p>
  {!clip?<button onClick={()=>{onPreview(null);onChange({...rig,clip:captureJointPose(rig,0)});}}>Create joint animation</button>:<>
  <label><input type="checkbox" checked={clip.loop} onChange={e=>onChange({...rig,clip:{...clip,loop:e.target.checked}})}/> Loop joint animation</label>
